@@ -1,0 +1,578 @@
+{
+	"info": {
+		"_postman_id": "f6341534-d4fb-44bc-a79e-05b87679eb36",
+		"name": "seniorcareplan",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18163307"
+	},
+	"item": [
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "username",
+							"value": "subscriber@grr.la",
+							"description": "username | email | phone, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "123456",
+							"description": "password, required, string(255)",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users/login",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "users",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users/me",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user/me",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "imageFile",
+							"description": "image, optional, file",
+							"type": "file",
+							"src": "/C:/Users/rusu.daniel/Downloads/rdd.jpg"
+						},
+						{
+							"key": "first_name",
+							"value": "Daniel",
+							"description": "first_name, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "middle_name",
+							"value": "Dumitru",
+							"description": "middle_name, optional, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "last_name",
+							"value": "Rusu",
+							"description": "first_name, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "gender",
+							"value": "1",
+							"description": "gender, required, integer(1) (GENDER_MALE = 1,  GENDER_FEMALE = 2)",
+							"type": "text"
+						},
+						{
+							"key": "email",
+							"value": "workspace@grr.la",
+							"description": "email, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "phone",
+							"value": "+40742334510",
+							"description": "phone, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "",
+							"description": "password, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password_confirm",
+							"value": "",
+							"description": "password, required (if password), string(255)",
+							"type": "text"
+						},
+						{
+							"key": "role",
+							"value": "superAdmin",
+							"description": "role, optional, select",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users/me",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "4VobZZmeBdYgjuIcT89JVXhLnREFZ-hf",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "first_name",
+							"value": "Daniel",
+							"description": "first_name, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "last_name",
+							"value": "Rusu",
+							"description": "first_name, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "email",
+							"value": "danielrusu.rdd@gmail.com",
+							"description": "email, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "phone",
+							"value": "0040742334512",
+							"description": "phone, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "123456",
+							"description": "password, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password_confirm",
+							"value": "123456",
+							"description": "password, required (if password), string(255)",
+							"type": "text"
+						},
+						{
+							"key": "bypass",
+							"value": "1",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "imageFile",
+							"description": "image, optional, file",
+							"type": "file",
+							"src": "/C:/Users/rusu.daniel/Downloads/rdd.jpg"
+						},
+						{
+							"key": "first_name",
+							"value": "Daniel",
+							"description": "first_name, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "middle_name",
+							"value": "Dumitru",
+							"description": "middle_name, optional, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "last_name",
+							"value": "Rusu",
+							"description": "first_name, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "gender",
+							"value": "1",
+							"description": "gender, required, integer(1) (GENDER_MALE = 1,  GENDER_FEMALE = 2)",
+							"type": "text"
+						},
+						{
+							"key": "email",
+							"value": "workspace@grr.la",
+							"description": "email, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "phone",
+							"value": "+40742334510",
+							"description": "phone, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "",
+							"description": "password, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "password_confirm",
+							"value": "",
+							"description": "password, required (if password), string(255)",
+							"type": "text"
+						},
+						{
+							"key": "role",
+							"value": "superAdmin",
+							"description": "role, optional, select",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users/me",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "4VobZZmeBdYgjuIcT89JVXhLnREFZ-hf",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users/3",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"3"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": []
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/users/4",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"users",
+						"4"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "workspace",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "status",
+							"value": "1",
+							"description": "status, required, integer(1) (STATUS_INACTIVE = 0,  STATUS_ACTIVE = 1)",
+							"type": "text"
+						},
+						{
+							"key": "url",
+							"value": "seniovo",
+							"description": "url, required, string(255)",
+							"type": "text"
+						},
+						{
+							"key": "contractor_id",
+							"value": "1",
+							"description": "contractor_id, required, integer",
+							"type": "text"
+						},
+						{
+							"key": "bypass",
+							"value": "1",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/workspaces",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"workspaces"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "contractor/clocking",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "{{language}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "code",
+							"value": "ScdI2tfi",
+							"description": "code, required, string(255)",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{baseUrl}}/api/v1/contractors/clocking",
+					"protocol": "https",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"contractors",
+						"clocking"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

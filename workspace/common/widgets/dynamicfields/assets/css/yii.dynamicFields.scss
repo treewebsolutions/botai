@@ -1,0 +1,18 @@
+.dynamicfields-item {
+	position: relative;
+}
+.dynamicfields-toolbar {
+	position: absolute;
+	top: 0;
+	right: 0;
+	white-space: nowrap;
+	> .btn:last-of-type {
+		margin-right: 0;
+	}
+}
+.dynamicfields-first-item {
+	display: none;
+}
+.dynamicfields-empty-item {
+	text-align: center;
+}

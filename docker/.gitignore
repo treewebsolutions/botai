@@ -1,0 +1,6 @@
+# Local overrides (created from .env.example)
+.env
+
+# Self-signed SSL material generated per project by setup.sh
+apache/ssl/*.crt
+apache/ssl/*.key

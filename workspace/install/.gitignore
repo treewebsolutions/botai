@@ -1,0 +1,3 @@
+# SQL files that holds dynamic generated data for individual types
+/db/1/custom_*_data.sql
+/db/2/custom_*_data.sql

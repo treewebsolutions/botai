@@ -1,0 +1,115 @@
+{
+	"name": "yiisoft/yii2-app-advanced",
+	"description": "Documentation",
+	"keywords": [
+		"tws",
+		"saas",
+		"master"
+	],
+	"homepage": "https://treewebsolutions.com/",
+	"authors": [
+		{
+			"name": "Tree Web Solutions",
+			"email": "treewebsolutions.com@gmail.com"
+		}
+	],
+	"type": "project",
+	"license": "BSD-3-Clause",
+	"support": {
+		"issues": "https://github.com/yiisoft/yii2/issues?state=open",
+		"forum": "http://www.yiiframework.com/forum/",
+		"wiki": "http://www.yiiframework.com/wiki/",
+		"irc": "irc://irc.freenode.net/yii",
+		"source": "https://github.com/yiisoft/yii2"
+	},
+	"minimum-stability": "stable",
+	"require": {
+		"php": ">=7.1.0",
+		"yiisoft/yii2": "~2.0.21",
+		"yiisoft/yii2-bootstrap": "~2.0.0",
+		"yiisoft/yii2-swiftmailer": "~2.0.0 || ~2.1.0",
+		"yiisoft/yii2-httpclient": "~2.0.0",
+		"yiisoft/yii2-authclient": "~2.2.0",
+		"yii2tech/ar-softdelete": "*",
+		"yii2tech/ar-position": "^1.0",
+		"omnilight/yii2-scheduling": "*",
+		"lajax/yii2-translate-manager": "^1.7",
+		"codemix/yii2-localeurls": "^1.7",
+		"kartik-v/yii2-dialog": "@dev",
+		"kartik-v/yii2-widget-growl": "*",
+		"kartik-v/yii2-widget-depdrop": "@dev",
+		"kartik-v/yii2-widget-select2": "@dev",
+		"kartik-v/yii2-widget-colorinput": "*",
+		"kartik-v/yii2-widget-fileinput": "@dev",
+		"kartik-v/yii2-widget-switchinput": "*",
+		"kartik-v/yii2-widget-typeahead": "*",
+		"kartik-v/yii2-widget-rating": "*",
+		"kartik-v/yii2-slider": "*",
+		"kartik-v/yii2-number": "*",
+		"kartik-v/yii2-widget-touchspin": "*",
+		"kartik-v/yii2-mpdf": "*",
+		"kartik-v/yii2-context-menu": "*",
+		"kartik-v/yii2-nav-x": "*",
+		"2amigos/yii2-google-maps-library": "*",
+		"zelenin/yii2-rss": "~0.1",
+		"skeeks/yii2-assets-auto-compress": "*",
+	  	"openspout/openspout": "^4.28",
+		"phpoffice/phpspreadsheet": "^1.7",
+		"jeroendesloovere/vcard": "dev-2.0.0-dev",
+	  	"richweber/yii2-google-translate-api": "dev-master",
+	  	"borales/yii2-phone-input": "*",
+
+		"treewebsolutions/textfile": "dev-main",
+		"treewebsolutions/yii2": "dev-main",
+		"treewebsolutions/yii2-sms": "dev-main",
+		"treewebsolutions/yii2-payment": "dev-main",
+		"treewebsolutions/yii2-commercial": "dev-main",
+		"treewebsolutions/yii2-widget-sitemap": "dev-main",
+		"treewebsolutions/yii2-widget-carousel": "dev-main",
+		"treewebsolutions/yii2-widget-chart": "dev-main",
+		"treewebsolutions/yii2-widget-datetimepicker": "dev-main",
+		"treewebsolutions/yii2-widget-socialshare": "dev-main",
+		"treewebsolutions/yii2-widget-sortable": "dev-main",
+		"treewebsolutions/yii2-widget-tinymce": "dev-main",
+		"treewebsolutions/yii2-widget-typeahead": "dev-main",
+
+		"npm-asset/font-awesome": "~4.7.0",
+		"npm-asset/simple-line-icons": "~2.4.1",
+		"npm-asset/animate.css": "~3.7.2",
+		"npm-asset/iframe-resizer": "~4.2.6",
+		"npm-asset/fancyapps--fancybox": "~3.5.7"
+	},
+	"require-dev": {
+		"yiisoft/yii2-debug": "~2.0.0",
+		"yiisoft/yii2-gii": "~2.0.0",
+		"yiisoft/yii2-faker": "~2.0.0",
+		"codeception/base": "^2.4.0",
+		"phpunit/phpunit": "~6.5.5",
+		"codeception/verify": "~1.0.0"
+	},
+	"config": {
+	  "process-timeout": 1800,
+	  "allow-plugins": {
+		"yiisoft/yii2-composer": true
+	  }
+	},
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "https://asset-packagist.org"
+		},
+	  	{"type": "git", "url": "https://github.com/treewebsolutions/textfile.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-sms.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-payment.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-commercial.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-sitemap.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-carousel.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-chart.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-datetimepicker.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-socialshare.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-sortable.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-tinymce.git"},
+		{"type": "git", "url": "https://github.com/treewebsolutions/yii2-widget-typeahead.git"}
+	]
+}

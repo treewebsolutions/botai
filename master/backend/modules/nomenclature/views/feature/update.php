@@ -1,0 +1,38 @@
+<?php
+/* @var $this yii\web\View */
+/* @var $model common\models\Feature */
+
+use yii\helpers\Html;
+
+$this->title = Yii::t('common', 'Update {item}', ['item' => Yii::t('common', 'Feature')]);
+$this->params['breadcrumbs'] = [
+	[
+		'label' => Yii::t('common', 'Nomenclature'),
+		'url' => ['default/index'],
+	],
+	[
+		'label' => Yii::t('common', 'Features'),
+		'url' => ['index'],
+	],
+	Yii::t('common', 'Update'),
+];
+$this->params['actions'] = [
+	[
+		'visible' => Yii::$app->user->can('viewFeature'),
+		'tag' => 'a',
+		'url' => ['index'],
+		'icon' => 'fa fa-list',
+		'options' => [
+			'class' => 'btn btn-sm btn-default',
+			'title' => Yii::t('common', 'List'),
+			'data' => [
+				'toggle' => 'tooltip',
+			],
+		],
+	],
+];
+?>
+
+<?= $this->render('_form', [
+	'model' => $model,
+]) ?>

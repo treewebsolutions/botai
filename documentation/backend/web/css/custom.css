@@ -1,0 +1,8 @@
+.dt-scroll-x {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.dataTables_scrollBody {
+    max-height: 2000px !important;
+}

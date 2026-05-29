@@ -1,0 +1,25 @@
+# Prevent directory listings
+Options -Indexes
+IndexIgnore */*
+
+# Follow symbolic links
+Options FollowSymlinks
+
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+	RewriteBase /
+
+	# Redirect to the non-www version
+	RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+	RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+	# Allow access to files from public uploads directory
+	RewriteCond %{REQUEST_URI} /(uploads)
+	RewriteRule ^uploads/(.*)$ uploads/$1 [L]
+
+	# Set backend application
+	RewriteRule ^admin/?(.*)$ backend/web/$1 [NC,L]
+
+	# Set frontend as default application
+	RewriteRule ^(.+)?$ frontend/web/$1
+</IfModule>

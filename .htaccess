@@ -1,0 +1,32 @@
+# Prevent directory listings
+Options -Indexes
+IndexIgnore */*
+
+# Follow symbolic links
+Options FollowSymlinks
+
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+	RewriteBase /
+
+	# Redirect to HTTPS without www
+	RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP_HOST} ^www\. [NC]
+    RewriteCond %{HTTP_HOST} ^(?:www\.)?(.+)$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L,NE]
+
+
+    # DOCUMENTATION
+    RewriteRule ^documentation/?(.*)$ documentation/$1 [NC,L]
+	
+	# REST API
+	RewriteCond %{REQUEST_URI} /(api/v\d+)
+	RewriteRule ^api/?(.*)$ master/api/public/$ [L]
+
+	# BEGIN Workspace Rules
+	RewriteRule ^tws/?(.*)$ workspace/workspaces/1/$1 [NC,L]
+	# END Workspace Rules
+
+	# Set master as default application
+	RewriteRule ^(.+)?$ master/$1
+</IfModule>

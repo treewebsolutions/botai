@@ -1,0 +1,12 @@
+.dt-scroll-x {
+	width: 100%;
+	overflow-x: auto;
+}
+
+.page-header.navbar .top-menu .navbar-nav > li.link > a {
+	color: #c5c5c5; !important;
+}
+
+.page-header.navbar .top-menu .navbar-nav > li.link > a:hover, .page-header.navbar .top-menu .navbar-nav > li.link > a:focus {
+	background-color: #393939;
+}

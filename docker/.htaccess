@@ -1,0 +1,57 @@
+# Prevent directory listings
+Options -Indexes
+IndexIgnore */*
+
+# Follow symbolic links
+Options FollowSymlinks
+
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+	RewriteBase /
+
+	# Redirect to the non-www version
+    RewriteCond %{HTTPS} off [OR]
+    RewriteCond %{HTTP_HOST} ^www\. [NC]
+    RewriteCond %{HTTP_HOST} ^(?:www\.)?(.+)$ [NC]
+    RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L,NE]
+
+	# DOCUMENTATION
+	RewriteRule ^documentation/?(.*)$ documentation/$1 [NC,L]
+	
+	# REST API
+	RewriteCond %{REQUEST_URI} /(api/v\d+)
+	RewriteRule ^api/?(.*)$ master/api/web/$ [L]
+
+	# BEGIN Workspace Rules
+	RewriteRule ^ajvpsbotosani/?(.*)$ workspace/workspaces/88/$1 [NC,L]
+	RewriteRule ^ajvpssv/?(.*)$ workspace/workspaces/87/$1 [NC,L]
+	RewriteRule ^ajvpsmures/?(.*)$ workspace/workspaces/84/$1 [NC,L]
+	RewriteRule ^ajvpsgorj/?(.*)$ workspace/workspaces/86/$1 [NC,L]
+	RewriteRule ^ajvpsarges/?(.*)$ workspace/workspaces/85/$1 [NC,L]
+	RewriteRule ^ajvpssm/?(.*)$ workspace/workspaces/83/$1 [NC,L]
+	RewriteRule ^ajvpsarad/?(.*)$ workspace/workspaces/14/$1 [NC,L]
+	RewriteRule ^ajvpshd/?(.*)$ workspace/workspaces/4/$1 [NC,L]
+	RewriteRule ^ajvpshunedoara/?(.*)$ workspace/workspaces/15/$1 [NC,L]
+	RewriteRule ^ajvpscs/?(.*)$ workspace/workspaces/82/$1 [NC,L]
+	RewriteRule ^ajvpsbh/?(.*)$ workspace/workspaces/6/$1 [NC,L]
+	RewriteRule ^ajvpsbihor/?(.*)$ workspace/workspaces/13/$1 [NC,L]
+	RewriteRule ^ajvpsbuzau/?(.*)$ workspace/workspaces/12/$1 [NC,L]
+	RewriteRule ^botaiiasi/?(.*)$ workspace/workspaces/17/$1 [NC,L]
+	RewriteRule ^botaidianapitesti/?(.*)$ workspace/workspaces/81/$1 [NC,L]
+	RewriteRule ^botaiarthemisotelec/?(.*)$ workspace/workspaces/80/$1 [NC,L]
+	RewriteRule ^ajvpsdambovita/?(.*)$ workspace/workspaces/16/$1 [NC,L]
+	RewriteRule ^ajvpsbihor/?(.*)$ workspace/workspaces/13/$1 [NC,L]
+	RewriteRule ^ajvpsrmvl/?(.*)$ workspace/workspaces/10/$1 [NC,L]
+	RewriteRule ^ajvpstimis/?(.*)$ workspace/workspaces/3/$1 [NC,L]
+	# END Workspace Rules
+
+	# Set master as default application
+	RewriteRule ^(.+)?$ master/$1
+</IfModule>
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “ea-php83” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php83 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit

@@ -1,0 +1,30 @@
+html {
+    scroll-behavior: smooth;
+}
+
+.work-email {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+}
+
+.site-form,
+.site-error {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.site-error {
+    text-align: center;
+}
+
+.content-container {
+    align-items: center;
+    width: 100%;
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-left: auto;
+    margin-right: auto;
+}

@@ -1,0 +1,7 @@
+{
+"version": 3,
+"mappings": "AACC,iCAAgB;EACf,MAAM,EAAE,cAAc",
+"sources": ["yii.canvas.scss"],
+"names": [],
+"file": "yii.canvas.css"
+}

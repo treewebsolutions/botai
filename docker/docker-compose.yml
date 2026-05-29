@@ -1,0 +1,131 @@
+name: ${PROJECT_NAME:-botai}
+
+services:
+  # ---------------------------------------------------------------------------
+  # MySQL database - mirrors Laragon defaults by default (root / empty password)
+  # so the existing common/config/main-local.php values just work.
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: ${PROJECT_NAME:-botai}_db
+    restart: unless-stopped
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # Accept the same size PMA / CLI can send.
+      - --max-allowed-packet=1073741824
+      # Favor throughput over durability for local dev (safe to lose the last
+      # few transactions if the container is killed).
+      - --innodb-flush-log-at-trx-commit=2
+      - --sync-binlog=0
+      # MySQL 8 ships ONLY_FULL_GROUP_BY in sql_mode by default; the legacy
+      # Yii2 queries in master/workspace use GROUP BY with non-aggregated
+      # columns (5.7-style). Keep the rest of the strict modes so we still
+      # catch real data issues, just drop ONLY_FULL_GROUP_BY.
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-${PROJECT_NAME:-botai}}
+      # Official MySQL image rejects MYSQL_USER=root; use root via MYSQL_ROOT_PASSWORD
+      # (and MYSQL_ALLOW_EMPTY_PASSWORD) so Laragon-style root / empty password works.
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d:ro
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ---------------------------------------------------------------------------
+  # Apache + PHP 8.3 web server. Serves the Yii2 advanced app on the configured
+  # HTTP/HTTPS ports. Apache picks up ${PROJECT_NAME} at startup and uses it
+  # for the ServerName + SSL certificate paths (see docker/apache/apache.conf).
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      # Build context is the project root (one level up from this compose
+      # file) so the whole app tree is available to the Dockerfile.
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        # Additional apt packages + PHP extensions to layer on top of the
+        # defaults. Leave empty unless the project needs something exotic
+        # (e.g. EXTRA_APT_PACKAGES="libpq-dev" + EXTRA_PHP_EXTENSIONS="pdo_pgsql").
+        EXTRA_APT_PACKAGES: ${EXTRA_APT_PACKAGES:-}
+        EXTRA_PHP_EXTENSIONS: ${EXTRA_PHP_EXTENSIONS:-}
+    container_name: ${PROJECT_NAME:-botai}_web
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ..:/var/www/html
+      - ./apache/apache.conf:/etc/apache2/sites-available/000-default.conf:ro
+      - ./apache/ssl:/etc/apache2/ssl:ro
+      # Last-loaded php.ini overlay - keep error_reporting / display_errors
+      # tweakable without rebuilding the web image (just `docker compose
+      # restart web` after editing the file).
+      - ./php/zzz-error-reporting.ini:/usr/local/etc/php/conf.d/zzz-error-reporting.ini:ro
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME:-botai}
+      # DocumentRoot resolved by apache.conf at startup. Override in .env to
+      # switch between root-routed (Yii2 advanced, WordPress) and `public/`
+      # framework conventions (Laravel, Symfony) without editing any config.
+      WEB_DOCROOT: ${WEB_DOCROOT:-/var/www/html}
+      APACHE_DOCUMENT_ROOT: ${WEB_DOCROOT:-/var/www/html}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ---------------------------------------------------------------------------
+  # phpMyAdmin. Served both at the root path (http://localhost:${PMA_PORT}/)
+  # and under the sub-URI (http://localhost:${PMA_PORT}${PMA_SUB_URI}) to match
+  # the Laragon default URL.
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:5-apache
+    container_name: ${PROJECT_NAME:-botai}_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD:-}
+      PMA_ABSOLUTE_URI: http://localhost:${PMA_PORT:-82}${PMA_SUB_URI:-/phpmyadmin/}
+      UPLOAD_LIMIT: 1024M
+      MEMORY_LIMIT: 1024M
+      MAX_EXECUTION_TIME: 0
+    ports:
+      - "${PMA_PORT:-82}:80"
+    volumes:
+      - ./phpmyadmin/apache.conf:/etc/apache2/sites-enabled/000-default.conf:ro
+      - ./phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php:ro
+      - ./phpmyadmin/php.ini:/usr/local/etc/php/conf.d/99-overrides.ini:ro
+      # Expose every <project>/**/_database/*.sql to PMA's Import tab via
+      # $cfg['UploadDir']. The botai repo keeps SQL dumps under master/.database
+      # and workspace/.database, so the project root is mounted read-only.
+      - ..:/var/uploads:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
