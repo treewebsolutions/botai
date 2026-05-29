@@ -149,8 +149,8 @@ return [
 			'model' => 'common\models\EventLog',
 		],
         'translate' => [
-            'class' => 'richweber\google\translate\Translation',
-            'key' => '',
+            'class' => 'common\components\GoogleTranslation',
+            'key' => $params['google.translateKey'] ?? '',
         ],
 	],
 	'params' => $params,

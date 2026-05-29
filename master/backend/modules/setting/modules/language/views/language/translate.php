@@ -35,7 +35,7 @@ $this->params['actions'] = [
 		],
 	],
     [
-        'visible' => Yii::$app->user->can('viewLanguage') && Yii::$app->request->get('id') != 'en-US' && $separators[Yii::$app->request->get('id')],
+        'visible' => Yii::$app->user->can('viewLanguage') && Yii::$app->request->get('id') != 'en-US',
         'tag' => 'a',
         'url' => ['translate', 'id' => Yii::$app->request->get('id'), 'translator' => 1],
         'icon' => 'fa fa-language',
@@ -48,7 +48,7 @@ $this->params['actions'] = [
         ],
     ],
     [
-        'visible' => Yii::$app->user->can('viewLanguage') && Yii::$app->request->get('id') != 'en-US' && $separators[Yii::$app->request->get('id')],
+        'visible' => Yii::$app->user->can('viewLanguage') && Yii::$app->request->get('id') != 'en-US',
         'tag' => 'a',
         'url' => ['translate', 'id' => Yii::$app->request->get('id'), 'translator' => 1, 'overwrite' => 1],
         'icon' => 'fa fa-language',

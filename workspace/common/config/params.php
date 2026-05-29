@@ -16,4 +16,7 @@ return [
 	'user.passwordResetTokenExpiration' => 60 * 60 * 3600,
 	'user.signupTokenExpiration' => 60 * 60 * 3600,
 	'user.accountActivation' => \common\models\User::ACCOUNT_ACTIVATION_CONFIRMATION,
+
+	// Google Translate API key — set the real value in params-local.php (kept out of VCS)
+	'google.translateKey' => '',
 ];

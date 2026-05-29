@@ -81,81 +81,6 @@ class LanguageController extends MainController
 			return $this->saveTranslation($id);
 		}
 
-		$separators = [
-			'af-ZA' => '',
-			'ar-AR' => '',
-			'az-AZ' => '',
-			'be-BY' => ' :; ',
-			'bg-BG' => ' ;; ',
-			'bn-IN' => '',
-			'bs-BA' => ' :; ',
-			'ca-ES' => '',
-			'cs-CZ' => ' :; ',
-			'cy-GB' => '',
-			'da-DK' => ' :; ',
-			'de-DE' => ' ;; ',
-			'el-GR' => ' :; ',
-			'en-GB' => '',
-			'en-PI' => '',
-			'en-UD' => '',
-			'en-US' => '',
-			'eo-EO' => '',
-			'es-ES' => ' ___ ',
-			'es-LA' => ' ___ ',
-			'et-EE' => ' :; ',
-			'eu-ES' => '',
-			'fa-IR' => '',
-			'fi-FI' => ' ;; ',
-			'fr-CA' => ' ___ ',
-			'fr-FR' => ' ___ ',
-			'fy-NL' => '',
-			'ga-IE' => '',
-			'gl-ES' => '',
-			'he-IL' => '',
-			'hi-IN' => '',
-			'hr-HR' => ' :; ',
-			'hu-HU' => ' ;; ',
-			'hy-AM' => '',
-			'id-ID' => '',
-			'is-IS' => '',
-			'it-IT' => ' ___ ',
-			'ja-JP' => '',
-			'ka-GE' => '',
-			'km-KH' => '',
-			'ko-KR' => '',
-			'ku-TR' => '',
-			'lt-LT' => ' :; ',
-			'lv-LV' => ' :; ',
-			'mk-MK' => ' :; ',
-			'ml-IN' => '',
-			'ms-MY' => '',
-			'ne-NP' => '',
-			'nl-NL' => ' :; ',
-			'pa-IN' => '',
-			'pl-PL' => ' ;; ',
-			'ps-AF' => '',
-			'pt-BR' => ' ___ ',
-			'pt-PT' => ' ___ ',
-			'ro-RO' => ' .∞. ',
-			'ru-RU' => ' :; ',
-			'sk-SK' => ' :; ',
-			'sl-SI' => ' :; ',
-			'sq-AL' => ' :; ',
-			'sr-RS' => ' :; ',
-			'sv-SE' => ' .∞. ',
-			'sw-KE' => '',
-			'ta-IN' => '',
-			'te-IN' => '',
-			'th-TH' => '',
-			'tl-PH' => '',
-			'tr-TR' => ' :; ',
-			'uk-UA' => ' :; ',
-			'vi-VN' => '',
-			'zh-CN' => '',
-			'zh-HK' => '',
-			'zh-TW' => '',
-		];
-
 		if (Yii::$app->request->get('translator')) {
 			$records = LanguageSource::find()
 				->alias('ls')
@@ -170,129 +95,70 @@ class LanguageController extends MainController
 			$source = Language::findOne(['language_id' => 'en-US'])->language;
 			$target = Language::findOne(['language_id' => Yii::$app->request->get('id')])->language;
 
-			// Use unique separator that's unlikely to appear in translations
-			$uniqueSeparator = '###TRANS_SEP_' . uniqid() . '###';
-			$separator = $separators[Yii::$app->request->get('id')] ?: $uniqueSeparator;
+			$messages = array_map(static function ($record) {
+				return (string)($record['message'] ?? '');
+			}, $records);
 
-			// If the language has no specific separator, use the unique one
-			if (empty($separator)) {
-				$separator = $uniqueSeparator;
-			}
-
-			$limit = 5000;
-			$batches = [];
-			$batchRecords = [];
-			$currentBatch = '';
-			$batchIndex = 0;
-
-			// Group records into batches
-			foreach ($records as $index => $record) {
-				$message = $record['message'];
-				$testLength = strlen($currentBatch) + strlen($message) + strlen($separator);
-
-				if ($testLength <= $limit && !empty($currentBatch)) {
-					$currentBatch .= $separator . $message;
-					$batchRecords[$batchIndex][] = $index;
-				} else {
-					if (!empty($currentBatch)) {
-						$batches[] = $currentBatch;
-						$batchIndex++;
+			try {
+				/** @var \common\components\GoogleTranslation $translator */
+				$translator = Yii::$app->translate;
+				$translations = $translator->translateMany($source, $target, $messages);
+				foreach ($translations as $i => $translated) {
+					if (!mb_check_encoding($translated, 'UTF-8')) {
+						$translations[$i] = mb_convert_encoding($translated, 'UTF-8', 'UTF-8');
 					}
-					$currentBatch = $message;
-					$batchRecords[$batchIndex] = [$index];
+					$translations[$i] = trim($translations[$i]);
 				}
-			}
-			// Add the last batch
-			if (!empty($currentBatch)) {
-				$batches[] = $currentBatch;
+			} catch (\Exception $e) {
+				Yii::$app->session->setFlash('error', $e->getMessage());
+				return $this->redirect(['translate', 'id' => Yii::$app->request->get('id')]);
 			}
 
-			// Translate batches
-			$translations = array_fill(0, $counter, '');
-			foreach ($batches as $batchIdx => $batchText) {
+			if (count($translations) === $counter) {
 				try {
-					$translatedBatch = Yii::$app->translate->translate($source, $target, $batchText)['data']['translations'][0]['translatedText'];
+					$languageId = (string)Yii::$app->request->get('id');
+					$overwrite = filter_var(
+						Yii::$app->request->get('overwrite'),
+						FILTER_VALIDATE_BOOLEAN,
+						FILTER_NULL_ON_FAILURE
+					) === true;
 
-					// Ensure UTF-8 encoding
-					if (!mb_check_encoding($translatedBatch, 'UTF-8')) {
-						$translatedBatch = mb_convert_encoding($translatedBatch, 'UTF-8', 'UTF-8');
-					}
-
-					// Split translated batch
-					$batchTranslations = explode($separator, $translatedBatch);
-
-					// Map translations back to original records
-					foreach ($batchRecords[$batchIdx] as $position => $recordIndex) {
-						if (isset($batchTranslations[$position])) {
-							$translations[$recordIndex] = trim($batchTranslations[$position]);
-						} else {
-							// Fallback to original if split failed
-							$translations[$recordIndex] = $records[$recordIndex]['message'];
-						}
-					}
-				} catch (\Exception $e) {
-					// If batch translation fails, use original messages
-					foreach ($batchRecords[$batchIdx] as $recordIndex) {
-						$translations[$recordIndex] = $records[$recordIndex]['message'];
-					}
-				}
-			}
-
-			if (count($translations) == $counter) {
-				try {
-					$translated = LanguageSource::find()
-						->alias('ls')
-						->joinWith([
-							'languageTranslates lt' => function (ActiveQuery $query) {
-								$query->andOnCondition(['lt.language' => Yii::$app->request->get('id')]);
-							},
-						])
-						->where([
-							'lt.language' => Yii::$app->request->get('id'),
-						])
-						->andWhere([
-							'AND',
-							['IS NOT', 'lt.translation', null],
-							['NOT IN', 'lt.translation', ['', ' ']],
-						])
-						->asArray()
-						->all();
 					for ($i = 0; $i < $counter; $i++) {
-						if (!empty($translated) && in_array($records[$i]['id'], ArrayHelper::getColumn($translated, 'id'))) {
-							$model = LanguageTranslate::findOne(['id' => $records[$i]['id']]);
-						} else {
+						$model = LanguageTranslate::findOne([
+							'id' => (int)$records[$i]['id'],
+							'language' => $languageId,
+						]);
+						if ($model !== null && !$overwrite) {
+							continue;
+						}
+						if ($model === null) {
 							$model = new LanguageTranslate();
 						}
-						if ($model->id && !Yii::$app->request->get('overwrite')) {
-							continue;
-						} else {
-							$model->id = $records[$i]['id'];
-							$model->language = Yii::$app->request->get('id');
-							$model->translation = $translations[$i];
-							if (!$model->save()) {
-								throw new \Exception(Yii::t('common', 'Translation failed.'));
-							}
+						$model->id = (int)$records[$i]['id'];
+						$model->language = $languageId;
+						$model->translation = $translations[$i];
+						if (!$model->save(false)) {
+							throw new \Exception(Yii::t('common', 'Translation failed.'));
 						}
 					}
-					$message = Yii::t('common', 'Translation successful.');
-					Yii::$app->session->setFlash('success', $message);
-					return $this->redirect(['translate', 'id' => Yii::$app->request->get('id')]);
+
+					Yii::$app->trigger('invalidate.cache');
+					$this->clearI18nMessageCache();
+
+					Yii::$app->session->setFlash('success', Yii::t('common', 'Translation successful.'));
+					return $this->redirect(['translate', 'id' => $languageId]);
 				} catch (\Exception $e) {
 					Yii::$app->session->setFlash('error', $e->getMessage());
 					return $this->redirect(['translate', 'id' => Yii::$app->request->get('id')]);
 				}
 			} else {
-				Yii::$app->session->setFlash('error', Yii::t('common', 'Translation count mismatch. Expected {expected}, got {actual}.', [
-					'expected' => $counter,
-					'actual' => count($translations),
-				]));
+				Yii::$app->session->setFlash('error', Yii::t('common', 'Translation failed.'));
 				return $this->redirect(['translate', 'id' => Yii::$app->request->get('id')]);
 			}
 		}
 
 		return $this->render('translate', [
 			'categories' => ArrayHelper::map(LanguageSource::find()->all(), 'category', 'category'),
-			'separators' => $separators,
 		]);
 	}
 
@@ -388,5 +254,18 @@ class LanguageController extends MainController
 				Yii::t('common', 'Record has been updated.') :
 				Yii::t('common', 'Cannot update the record.'),
 		]);
+	}
+
+	/**
+	 * Clears Yii DB message source cache so bulk/auto translations appear immediately.
+	 */
+	protected function clearI18nMessageCache(): void
+	{
+		foreach (array_keys(Yii::$app->i18n->translations) as $category) {
+			$messageSource = Yii::$app->i18n->getMessageSource($category);
+			if ($messageSource instanceof \yii\i18n\DbMessageSource && method_exists($messageSource, 'clearCache')) {
+				$messageSource->clearCache();
+			}
+		}
 	}
 }
