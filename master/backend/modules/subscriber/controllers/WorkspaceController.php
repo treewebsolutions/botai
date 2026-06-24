@@ -3,11 +3,13 @@
 namespace backend\modules\subscriber\controllers;
 
 use backend\controllers\MainController;
+use backend\modules\subscriber\models\WorkspaceDatabaseUpdateLogSearch;
 use backend\modules\subscriber\models\WorkspaceForm;
 use backend\modules\subscriber\models\WorkspaceSearch;
 use common\models\AuthAssignment;
 use common\models\Workspace;
 use common\models\WorkspaceDatabaseUpdateForm;
+use common\models\WorkspaceDatabaseUpdateLog;
 use Yii;
 use yii\filters\AccessControl;
 use yii\helpers\FileHelper;
@@ -36,7 +38,7 @@ class WorkspaceController extends MainController
 					],
 					[
 						'allow' => true,
-						'actions' => ['update', 'reinstall', 'database-update', 'symlink-update'],
+						'actions' => ['update', 'reinstall', 'database-update', 'database-update-logs', 'dt-database-update-logs', 'symlink-update'],
 						'roles' => ['updateWorkspace'],
 					],
 					[
@@ -62,6 +64,7 @@ class WorkspaceController extends MainController
 	{
 		return [
 			'dt-workspaces' => WorkspaceSearch::class,
+			'dt-database-update-logs' => WorkspaceDatabaseUpdateLogSearch::class,
 		];
 	}
 
@@ -255,47 +258,73 @@ class WorkspaceController extends MainController
 		return $this->redirect(['index']);
 	}
 
-    /**
-     * Update existing Workspace databases.
-     *
-     */
-    public function actionDatabaseUpdate()
-    {
-        if (Yii::$app->user->identity->authAssignment->item_name != 'superAdmin') {
-            return $this->redirect(['index']);
-        }
+	/**
+	 * Update existing Workspace databases.
+	 *
+	 * When a workspace $code is provided, the query is executed only against that
+	 * single workspace database (used to rerun a failed update). Each execution is
+	 * recorded so it is possible to tell which database succeeded, which failed and
+	 * with what exact error (see the history datatable on the same page).
+	 *
+	 * @param string|null $code The workspace code to target a single database.
+	 * @return mixed
+	 */
+	public function actionDatabaseUpdate($code = null)
+	{
+		if (Yii::$app->user->identity->authAssignment->item_name != 'superAdmin') {
+			return $this->redirect(['index']);
+		}
 
-        $model = new WorkspaceDatabaseUpdateForm();
-        $result = true;
+		$model = new WorkspaceDatabaseUpdateForm();
+		$model->workspaceCode = $code;
+		$results = [];
 
-        if ($model->load(Yii::$app->request->post()) && ($result = $model->saveModel())) {
-            Yii::$app->trigger('invalidate.cache', new \tws\caching\CacheEvent(['key' => 'findAllWorkspaces']));
+		if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+			$results = $model->saveModel();
+			Yii::$app->trigger('invalidate.cache', new \tws\caching\CacheEvent(['key' => 'findAllWorkspaces']));
 
-            $message = Yii::t('common', 'Record has been updated.');
-            if (Yii::$app->request->isAjax) {
-                return $this->asJson([
-                    'success' => true,
-                    'message' => $message,
-                ]);
-            }
-            Yii::$app->session->setFlash('success', $message);
+			$total = count($results);
+			$succeeded = count(array_filter($results, function (WorkspaceDatabaseUpdateLog $log) {
+				return $log->getIsSuccessful();
+			}));
+			$failed = $total - $succeeded;
 
-            return $this->redirect(['index']);
-        }
+			if ($total === 0) {
+				Yii::$app->session->setFlash('warning', Yii::t('common', 'No active workspace matched the request.'));
+			} elseif ($failed === 0) {
+				Yii::$app->session->setFlash('success', Yii::t('common', 'The query ran successfully on all {n} database(s).', ['n' => $total]));
+			} else {
+				Yii::$app->session->setFlash('error', Yii::t('common', 'The query failed on {failed} of {total} database(s). See the results below.', [
+					'failed' => $failed,
+					'total' => $total,
+				]));
+			}
+		} elseif (!empty($code)) {
+			// Prefill the query with the last one run against this workspace, to ease reruns.
+			$lastLog = WorkspaceDatabaseUpdateLog::find()
+				->where(['workspace_code' => $code])
+				->orderBy(['id' => SORT_DESC])
+				->one();
+			if ($lastLog !== null) {
+				$model->query = $lastLog->query;
+			}
+		}
 
-        if (Yii::$app->request->isAjax) {
-            return $this->asJson([
-                'success' => (bool) $result,
-                'data' => $this->renderAjax('', [
-                    'model' => $model,
-                ]),
-            ]);
-        }
+		return $this->render('database-update', [
+			'model' => $model,
+			'results' => $results,
+		]);
+	}
 
-        return $this->render('database-update', [
-            'model' => $model,
-        ]);
-    }
+	/**
+	 * Lists the history of executed Workspace database updates.
+	 *
+	 * @return mixed
+	 */
+	public function actionDatabaseUpdateLogs()
+	{
+		return $this->redirect(['database-update']);
+	}
 
 	/**
 	 * Update existing Workspace symbolic links for static assets.

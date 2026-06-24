@@ -88,6 +88,19 @@ $this->params['actions'] = [
 			],
 		],
 	],
+	[
+		'visible' => Yii::$app->user->can('updateWorkspace') && Yii::$app->user->identity->authAssignment->item_name == 'superAdmin',
+		'tag' => 'a',
+		'url' => ['database-update'],
+		'icon' => 'fa fa-database',
+		'options' => [
+			'class' => 'btn btn-sm btn-primary',
+			'title' => Yii::t('common', 'Database Update'),
+			'data' => [
+				'toggle' => 'tooltip',
+			],
+		],
+	],
 ];
 ?>
 
