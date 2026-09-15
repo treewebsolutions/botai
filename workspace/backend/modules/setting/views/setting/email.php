@@ -53,10 +53,12 @@ $this->params['breadcrumbs'] = [
 					])->textInput()->hint(Yii::t('backend', 'SMTP username.')) ?>
 				</div>
 				<div class="col-sm-6">
+					<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
 					<?= $form->field($model, 'password', [
 						'options' => [
 							'class' => 'form-group required',
 						],
+						'template' => $secretFieldTemplate,
 					])->passwordInput()->hint(Yii::t('backend', 'SMTP password.')) ?>
 				</div>
 			</div>

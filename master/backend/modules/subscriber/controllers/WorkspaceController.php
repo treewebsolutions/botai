@@ -342,42 +342,28 @@ class WorkspaceController extends MainController
 				'deleted' => Workspace::NO,
 			])
 			->all();
+		$errors = [];
 		if (!empty($models)) {
 			foreach ($models as $model) {
 				try {
 					$dirPath = $model->getDirectoryPath();
-					$targets = [
-						Yii::getAlias("@workspace/backend/web/assets") => "{$dirPath}/backend/web/assets",
-						Yii::getAlias("@workspace/backend/web/audio") => "{$dirPath}/backend/web/audio",
-						Yii::getAlias("@workspace/backend/web/img") => "{$dirPath}/backend/web/img",
-						Yii::getAlias("@workspace/backend/web/img/flags") => "{$dirPath}/backend/web/img/flags",
-						Yii::getAlias("@workspace/backend/web/img/ico") => "{$dirPath}/backend/web/img/ico",
-						Yii::getAlias("@workspace/backend/web/img/tpl") => "{$dirPath}/backend/web/img/tpl",
-						Yii::getAlias("@workspace/backend/web/css") => "{$dirPath}/backend/web/css",
-						Yii::getAlias("@workspace/backend/web/js") => "{$dirPath}/backend/web/js",
-						Yii::getAlias("@workspace/frontend/web/assets") => "{$dirPath}/frontend/web/assets",
-						Yii::getAlias("@workspace/frontend/web/img") => "{$dirPath}/frontend/web/img",
-						Yii::getAlias("@workspace/frontend/web/img/flags") => "{$dirPath}/frontend/web/img/flags",
-						Yii::getAlias("@workspace/frontend/web/img/ico") => "{$dirPath}/frontend/web/img/ico",
-						Yii::getAlias("@workspace/frontend/web/css") => "{$dirPath}/frontend/web/css",
-						Yii::getAlias("@workspace/frontend/web/fonts") => "{$dirPath}/frontend/web/fonts",
-						Yii::getAlias("@workspace/frontend/web/js") => "{$dirPath}/frontend/web/js",
-					];
+					// Skip workspaces that are not provisioned on this environment
+					// (no directory under <root>/workspaces/, e.g. cPanel-only tenants).
+					if (!$dirPath || !is_dir($dirPath)) {
+						continue;
+					}
+					// Single source of truth: the same map used by install/reinstall.
+					$targets = $model->getSymlinkMap();
+					// Remove the existing destination links so they get recreated below
+					// as relative symlinks (an older provisioning could have created them
+					// with absolute targets, which break across different mount roots).
 					foreach (array_values($targets) as $target) {
-						// Get all items (files and directories) in the specified directory
-						$items = FileHelper::findFiles($target, [
-							'only' => ['*'], // You can specify file extensions or patterns if needed
-							'recursive' => true, // Set to true if you want to search in subdirectories
-						]);
-						// Filter out only symbolic links
-						$symlinks = array_filter($items, 'is_link');
-						// Remove each symbolic link
-						foreach ($symlinks as $symlink) {
-							unlink($symlink);
+						if (is_link($target)) {
+							@unlink($target);
 						}
 					}
-					// Create symbolic links for static assets
-					\tws\helpers\FileHelper::symlink($targets);
+					// (Re)create the shared source/asset links as relative symlinks.
+					\common\helpers\FileHelper::symlink($targets);
 					Yii::$app->trigger('invalidate.cache', new \tws\caching\CacheEvent(['key' => 'findAllWorkspaces']));
 				} catch(\Exception $e) {
 					$errors[] = $e->getMessage();
@@ -476,6 +462,11 @@ class WorkspaceController extends MainController
 		} else {
 			$response['success'] = false;
 			$response['message']['title'] = Yii::t('common', 'Cannot reinstall the workspace.');
+			// Show which step actually failed: install() collects the underlying error
+			// (a refused SQL statement, a cPanel API rejection, an unwritable path) on the model.
+			if ($errors = array_merge([], ...array_values($model->getErrors()))) {
+				$response['message']['body'] = $errors;
+			}
 		}
 
 		if (Yii::$app->request->isAjax) {

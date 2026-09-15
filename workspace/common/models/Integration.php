@@ -132,7 +132,68 @@ class Integration extends CommonActiveRecord
 	public static function getTypeLabels()
 	{
 		return [
-			static::TYPE_OPENAI => Yii::t('label', 'Open AI'),
+			static::TYPE_OPENAI => Yii::t('label', 'OpenAI'),
 		];
+	}
+
+	/**
+	 * Decodes the data JSON column.
+	 *
+	 * @return array
+	 */
+	public function getDecodedData(): array
+	{
+		$decoded = json_decode((string) $this->data, true);
+		if (is_array($decoded)) {
+			return $decoded;
+		}
+
+		// Backward compatibility: a plain string is treated as the api_key
+		if (!empty($this->data)) {
+			return ['api_key' => trim((string) $this->data)];
+		}
+
+		return [];
+	}
+
+	/**
+	 * Returns the API key from the decoded data.
+	 *
+	 * @return string|null
+	 */
+	public function getApiKey(): ?string
+	{
+		$apiKey = $this->getDecodedData()['api_key'] ?? null;
+		return $apiKey !== null && $apiKey !== '' ? (string) $apiKey : null;
+	}
+
+	/**
+	 * Returns a specific setting from the decoded data.
+	 *
+	 * @param string $key
+	 * @param mixed $default
+	 * @return mixed
+	 */
+	public function getSetting(string $key, $default = null)
+	{
+		return $this->getDecodedData()[$key] ?? $default;
+	}
+
+	/**
+	 * Finds the OpenAI integration that provides the API key: the default one first,
+	 * then any active OpenAI integration (a key saved without the "Default" checkbox still works).
+	 *
+	 * @return static|null
+	 */
+	public static function findOpenAI()
+	{
+		return static::find()
+			->where([
+				'status' => static::STATUS_ACTIVE,
+				'deleted' => static::NO,
+				'type' => static::TYPE_OPENAI,
+			])
+			->orderBy(['default' => SORT_DESC, 'id' => SORT_ASC])
+			->one();
 	}
 }

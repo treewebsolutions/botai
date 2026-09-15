@@ -17,7 +17,8 @@ $this->title = Yii::t('common', 'Authentication');
 
 	<?= $form->field($model, 'username')->textInput(['autofocus' => true])->label(Yii::t('label', 'Email') . ' / ' . Yii::t('label', 'Phone')) ?>
 
-	<?= $form->field($model, 'password')->passwordInput() ?>
+	<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
+	<?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput() ?>
 
 	<?= $form->field($model, 'rememberMe')->checkbox() ?>
 

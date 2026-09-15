@@ -52,7 +52,8 @@ $this->params['breadcrumbs'] = [
 							<?= $form->field($model, 'openApiBaseUrl')->input('url')->hint(Yii::t('backend', 'The API base URL.') . ' ' . Yii::t('common', 'Example') . ': https://api.openapi.ro/api') ?>
 						</div>
 					</div>
-					<?= $form->field($model, 'openApiKey')->textarea(['rows' => 2])->hint(Yii::t('backend', 'The API key.') . ' ' . Yii::t('common', 'Example') . ': abcdefghijklmnopqrstuvwxyz') ?>
+					<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
+					<?= $form->field($model, 'openApiKey', ['template' => $secretFieldTemplate])->textarea(['rows' => 2, 'class' => 'form-control secret-hidden'])->hint(Yii::t('backend', 'The API key.') . ' ' . Yii::t('common', 'Example') . ': abcdefghijklmnopqrstuvwxyz') ?>
 				</div>
 			</div>
 		</div>

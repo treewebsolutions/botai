@@ -128,16 +128,19 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'Thread'),
+							'label' => Yii::t('label', 'Conversation'),
 							'value' => function (Message $model) {
-								return $model->thread->openai_id ?: '&mdash;';
+								if (!$model->conversation) {
+									return '&mdash;';
+								}
+								return Html::a(Html::encode($model->conversation->summary ?: $model->conversation->openai_conversation_id ?: '#' . $model->conversation->id), ['/conversation-manager/conversation/view', 'id' => $model->conversation->id]);
 							},
 						],
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Assistant'),
 							'value' => function (Message $model) {
-								return $model->assistant->name ?: '&mdash;';
+								return $model->assistant ? $model->assistant->name : '&mdash;';
 							},
 						],
 						[

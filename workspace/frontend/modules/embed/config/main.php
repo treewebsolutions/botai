@@ -24,12 +24,12 @@ return [
 					'route' => 'chat/speak',
 				],
 				[
-					'pattern' => 'chat/thread',
-					'route' => 'chat/thread',
+					'pattern' => 'chat/conversation',
+					'route' => 'chat/conversation',
 				],
 				[
-					'pattern' => 'chat/validate-thread',
-					'route' => 'chat/validate-thread',
+					'pattern' => 'chat/validate-conversation',
+					'route' => 'chat/validate-conversation',
 				],
 				[
 					'pattern' => 'chat/send-conversation',

@@ -67,9 +67,9 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 	{
 		return [
 			'roles' => [
+				'viewPage',
 				'viewIntegration',
-				'viewVectorStore',
-				'viewVectorStoreFile',
+				'viewKnowledgeBase',
 				'viewAssistant',
 			],
 			'icon' => 'fa fa-list',
@@ -89,16 +89,10 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 //					'url' => ['/nomenclature-manager/integration/index'],
 //				],
 				[
-					'roles' => ['viewVectorStore'],
+					'roles' => ['viewKnowledgeBase'],
 					'icon' => 'fa fa-circle-o',
-					'label' => Yii::t('label', 'Vector Stores'),
-					'url' => ['/nomenclature-manager/vector-store/index'],
-				],
-				[
-					'roles' => ['viewVectorStoreFile'],
-					'icon' => 'fa fa-circle-o',
-					'label' => Yii::t('label', 'Vector Store Files'),
-					'url' => ['/nomenclature-manager/vector-store-file/index'],
+					'label' => Yii::t('label', 'Knowledge Bases'),
+					'url' => ['/nomenclature-manager/knowledge-base/index'],
 				],
 				[
 					'roles' => ['viewAssistant'],

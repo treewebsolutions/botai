@@ -1,0 +1,94 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        # Same major version as local dev (docker/docker-compose.yml).
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pmysql"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Match the app's documented runtime contract (docker/docker-compose.yml):
+      # the legacy Yii2 queries use GROUP BY with non-aggregated columns, so
+      # ONLY_FULL_GROUP_BY is dropped while the rest of the strict modes stay.
+      # Service containers cannot take command-line args, hence SET GLOBAL here.
+      - name: Align sql_mode with the app runtime
+        run: >-
+          mysql -h 127.0.0.1 -u root -pmysql -e
+          "SET GLOBAL sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, intl, gd, zip, mbstring
+          # Match the app's documented runtime contract (docker/php/zzz-error-reporting.ini):
+          # only true errors are reported, so PHP warnings/notices in the legacy code
+          # are not turned into yii\base\ErrorException by the error handler.
+          # setup-php's default is E_ALL, which would make CI stricter than any real environment.
+          ini-values: error_reporting=E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR
+
+      - name: Install master dependencies
+        run: composer install --no-interaction --no-progress --ignore-platform-reqs --no-security-blocking --working-dir=master
+
+      - name: Install workspace dependencies
+        run: composer install --no-interaction --no-progress --ignore-platform-reqs --no-security-blocking --working-dir=workspace
+
+      - name: Install documentation dependencies
+        run: composer install --no-interaction --no-progress --ignore-platform-reqs --no-security-blocking --working-dir=documentation
+
+      # Creates botai_master_test, botai_workspace_test and botai_documentation_test
+      # from master/tests/_schema.sql, workspace/install/db/_01_structure.sql (with the
+      # install/db/1/ fallback) and documentation/tests/_schema.sql.
+      - name: Provision the test databases
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: mysql
+        run: bash tools/load-test-schema.sh
+
+      - name: Run the master suite
+        env:
+          TEST_DB_DSN: mysql:host=127.0.0.1;dbname=botai_master_test
+          TEST_DB_USER: root
+          TEST_DB_PASSWORD: mysql
+        run: php tools/phpunit-9.phar --bootstrap master/tests/bootstrap.php master/tests
+
+      - name: Run the workspace suite
+        env:
+          TEST_DB_DSN: mysql:host=127.0.0.1;dbname=botai_workspace_test
+          TEST_DB_USER: root
+          TEST_DB_PASSWORD: mysql
+        run: php tools/phpunit-9.phar --bootstrap workspace/tests/bootstrap.php workspace/tests
+
+      - name: Run the documentation suite
+        env:
+          TEST_DB_DSN: mysql:host=127.0.0.1;dbname=botai_documentation_test
+          TEST_DB_USER: root
+          TEST_DB_PASSWORD: mysql
+        run: php tools/phpunit-9.phar --bootstrap documentation/tests/bootstrap.php documentation/tests
+
+      - name: Dump the Yii logs on failure
+        if: failure()
+        run: |
+          for f in master/backend/runtime/logs/app.log master/runtime/logs/app.log \
+                   workspace/frontend/runtime/logs/app.log workspace/runtime/logs/app.log \
+                   documentation/backend/runtime/logs/app.log documentation/runtime/logs/app.log; do
+            if [ -f "$f" ]; then echo "===== $f"; tail -n 200 "$f"; fi
+          done

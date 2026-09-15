@@ -1,0 +1,63 @@
+#!/bin/sh
+# Runs the three PHPUnit suites (master, workspace, documentation) before every
+# commit and aborts the commit when one of them is red. Enable once per clone with:
+#   git config core.hooksPath githooks
+# Skip explicitly (e.g. for a WIP commit) with:
+#   SKIP_TESTS=1 git commit ...
+#
+# The suites need the botai_*_test databases (see docs/testing.md); provision them
+# with tools/load-test-schema.sh. Connection overrides: TEST_DB_DSN, TEST_DB_USER,
+# TEST_DB_PASSWORD (exported in the shell that runs `git commit`).
+
+if [ "$SKIP_TESTS" = "1" ]; then
+	echo "pre-commit: SKIP_TESTS=1, skipping the test suites."
+	exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+PHP="${PHP:-php}"
+# Same error_reporting as docker/php/zzz-error-reporting.ini and the CI workflow.
+ERROR_REPORTING="error_reporting=E_ERROR|E_PARSE|E_CORE_ERROR|E_COMPILE_ERROR|E_USER_ERROR|E_RECOVERABLE_ERROR"
+
+if ! command -v "$PHP" >/dev/null 2>&1; then
+	echo "pre-commit: '$PHP' not found on PATH — cannot run the test suites."
+	echo "pre-commit: install PHP (or set PHP=/path/to/php), or bypass once with SKIP_TESTS=1."
+	exit 1
+fi
+
+# One connection probe per app, so an unreachable/unprovisioned test database
+# produces a clear message instead of a wall of PHPUnit errors.
+probe_db() {
+	app="$1"
+	"$PHP" -d "$ERROR_REPORTING" -r '
+		$dsn = getenv("TEST_DB_DSN") ?: "mysql:host=127.0.0.1;port=3306;dbname=botai_" . $argv[1] . "_test";
+		$user = getenv("TEST_DB_USER") ?: "root";
+		$pass = getenv("TEST_DB_PASSWORD") !== false ? getenv("TEST_DB_PASSWORD") : "mysql";
+		try { new PDO($dsn, $user, $pass); } catch (Throwable $e) { fwrite(STDERR, $e->getMessage() . "\n"); exit(1); }
+	' "$app" 2>&1
+}
+
+run_suite() {
+	app="$1"
+	echo "pre-commit: running the $app suite..."
+	if ! probe_db "$app"; then
+		echo "pre-commit: the $app test database is unreachable — commit aborted."
+		echo "pre-commit: start the Docker stack (cd docker && docker compose up -d) and provision it with"
+		echo "pre-commit:   tools/load-test-schema.sh $app"
+		echo "pre-commit: or bypass once with SKIP_TESTS=1 git commit ..."
+		exit 1
+	fi
+	"$PHP" -d "$ERROR_REPORTING" "$ROOT/tools/phpunit-9.phar" --bootstrap "$ROOT/$app/tests/bootstrap.php" "$ROOT/$app/tests" || {
+		echo "pre-commit: $app tests FAILED — commit aborted (use SKIP_TESTS=1 to bypass)."
+		exit 1
+	}
+}
+
+# Note: TEST_DB_DSN, when exported, names a single database — it applies to every
+# suite, so only set it when running one app's suite by hand, not for the hook.
+run_suite master
+run_suite workspace
+run_suite documentation
+
+echo "pre-commit: all suites green."
+exit 0

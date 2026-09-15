@@ -25,6 +25,7 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  *
  * @property User $creator
  * @property User $updater
+ * @property RecordVectorIndex $recordVectorIndex
  */
 class Page extends CommonActiveRecord
 {
@@ -107,5 +108,15 @@ class Page extends CommonActiveRecord
 	public function getUpdater()
 	{
 		return $this->hasOne(User::class, ['id' => 'updated_by']);
+	}
+
+	/**
+	 * The vector store file mapping of this page (see {@see \common\services\OpenAiRecordVectorStoreService}).
+	 *
+	 * @return \yii\db\ActiveQuery|CommonActiveQuery
+	 */
+	public function getRecordVectorIndex()
+	{
+		return $this->hasOne(RecordVectorIndex::class, ['record_id' => 'id']);
 	}
 }

@@ -170,8 +170,8 @@ $this->params['actions'] = [
 				'filter' => ['select', array_keys(Message::getRoleLabels())],
 			],
 			[
-				'data' => 'thread',
-				'title' => Yii::t('label', 'Thread'),
+				'data' => 'conversation',
+				'title' => Yii::t('label', 'Conversation'),
 				'filter' => ['text'],
 			],
 			[

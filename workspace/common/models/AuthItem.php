@@ -172,24 +172,14 @@ class AuthItem extends CommonActiveRecord
 							'restoreIntegration' => Yii::t('label', 'Restore'),
 						],
 					],
-					'VectorStore' => [
-						'heading' => Yii::t('label', 'Vector Stores'),
+					'KnowledgeBase' => [
+						'heading' => Yii::t('label', 'Knowledge Bases'),
 						'items' => [
-							'viewVectorStore' => Yii::t('label', 'View'),
-							'createVectorStore' => Yii::t('label', 'Create'),
-							'updateVectorStore' => Yii::t('label', 'Update'),
-							'deleteVectorStore' => Yii::t('label', 'Delete'),
-							'restoreVectorStore' => Yii::t('label', 'Restore'),
-						],
-					],
-					'VectorStoreFile' => [
-						'heading' => Yii::t('label', 'Vector Store Files'),
-						'items' => [
-							'viewVectorStoreFile' => Yii::t('label', 'View'),
-							'createVectorStoreFile' => Yii::t('label', 'Create'),
-							'updateVectorStoreFile' => Yii::t('label', 'Update'),
-							'deleteVectorStoreFile' => Yii::t('label', 'Delete'),
-							'restoreVectorStoreFile' => Yii::t('label', 'Restore'),
+							'viewKnowledgeBase' => Yii::t('label', 'View'),
+							'createKnowledgeBase' => Yii::t('label', 'Create'),
+							'updateKnowledgeBase' => Yii::t('label', 'Update'),
+							'deleteKnowledgeBase' => Yii::t('label', 'Delete'),
+							'restoreKnowledgeBase' => Yii::t('label', 'Restore'),
 						],
 					],
 					'Assistant' => [
@@ -207,14 +197,14 @@ class AuthItem extends CommonActiveRecord
 			'Conversation' => [
 				'heading' => Yii::t('label', 'Conversations'),
 				'groups' => [
-					'Thread' => [
-						'heading' => Yii::t('label', 'Threads'),
+					'Conversation' => [
+						'heading' => Yii::t('label', 'Conversations'),
 						'items' => [
-							'viewThread' => Yii::t('label', 'View'),
-							'createThread' => Yii::t('label', 'Create'),
-							'updateThread' => Yii::t('label', 'Update'),
-							'deleteThread' => Yii::t('label', 'Delete'),
-							'restoreThread' => Yii::t('label', 'Restore'),
+							'viewConversation' => Yii::t('label', 'View'),
+							'createConversation' => Yii::t('label', 'Create'),
+							'updateConversation' => Yii::t('label', 'Update'),
+							'deleteConversation' => Yii::t('label', 'Delete'),
+							'restoreConversation' => Yii::t('label', 'Restore'),
 						],
 					],
 					'Message' => [

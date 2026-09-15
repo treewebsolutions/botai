@@ -6,7 +6,7 @@
 
 use common\models\Message;
 use backend\widgets\ActiveForm;
-use common\models\VectorStore;
+use common\models\Conversation;
 use kartik\select2\Select2;
 use kartik\touchspin\TouchSpin;
 use yii\helpers\ArrayHelper;
@@ -43,11 +43,13 @@ use yii\helpers\Html;
 					]) ?>
 				</div>
 				<div class="col-sm-4">
-					<?= $form->field($model, 'thread_id')->widget(Select2::class, [
+					<?= $form->field($model, 'conversation_id')->widget(Select2::class, [
 						'options' => [
 							'multiple' => false,
 						],
-						'data' => ArrayHelper::map(VectorStore::findAllVectorStores(), 'id', 'name'),
+						'data' => ArrayHelper::map(Conversation::find()->where(['deleted' => Conversation::NO])->orderBy(['id' => SORT_DESC])->all(), 'id', function (Conversation $conversation) {
+							return $conversation->summary ?: $conversation->openai_conversation_id ?: '#' . $conversation->id;
+						}),
 						'maintainOrder' => true,
 						'showToggleAll' => false,
 						'pluginLoading' => false,

@@ -66,7 +66,8 @@ use yii\helpers\Html;
 			</div>
 			<div class="row">
 				<div class="col-sm-12">
-					<?= $form->field($model, 'data')->textInput() ?>
+					<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
+					<?= $form->field($model, 'data', ['template' => $secretFieldTemplate])->passwordInput() ?>
 				</div>
 			</div>
 

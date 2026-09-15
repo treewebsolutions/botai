@@ -68,7 +68,7 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 		return [
 			'roles' => [
 				'viewMessage',
-				'viewThread',
+				'viewConversation',
 				'viewParticipant',
 			],
 			'icon' => 'fa fa-comments-o',
@@ -82,10 +82,10 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 					'url' => ['/conversation-manager/message/index'],
 				],
 				[
-					'roles' => ['viewThread'],
+					'roles' => ['viewConversation'],
 					'icon' => 'fa fa-circle-o',
-					'label' => Yii::t('label', 'Threads'),
-					'url' => ['/conversation-manager/thread/index'],
+					'label' => Yii::t('label', 'Conversations'),
+					'url' => ['/conversation-manager/conversation/index'],
 				],
 				[
 					'roles' => ['viewParticipant'],

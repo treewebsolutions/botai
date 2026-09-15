@@ -24,7 +24,16 @@ composer.lock
 
 # Database dumps (may contain API keys and credentials)
 **/_database/
-**/install/db/**/_05_data.sql
+# Workspace install seed data: shared (install/db/) and per-type (install/db/<type>/)
+**/install/db/_05_data.sql
+**/install/db/*/_05_data.sql
+
+# Provisioned tenant workspaces (generated at install/run time)
+/workspaces/*
+!/workspaces/.gitkeep
+
+# Workspace template runtime data (generated at run time)
+/workspace/runtime/
 
 # Maven
 target/
@@ -56,3 +65,6 @@ Thumbs.db
 *.wmv
 
 /source
+# PHPUnit result caches (tools/phpunit-9.phar)
+.phpunit.result.cache
+tools/.phpunit.result.cache

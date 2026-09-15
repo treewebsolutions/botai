@@ -1459,4 +1459,26 @@ body.mce-fullscreen .page-header.navbar.navbar-fixed-top {
   font-size: 14px;
 }
 
+/* Secret fields: eye toggle to reveal/hide keys and passwords */
+.input-secret {
+  position: relative; }
+
+.input-secret .form-control {
+  padding-right: 38px; }
+
+.input-secret .toggle-secret {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  cursor: pointer;
+  color: #999;
+  z-index: 3;
+  font-size: 14px; }
+
+.input-secret .toggle-secret:hover {
+  color: #333; }
+
+.input-secret textarea.secret-hidden {
+  -webkit-text-security: disc; }
+
 /*# sourceMappingURL=main-app.css.map */

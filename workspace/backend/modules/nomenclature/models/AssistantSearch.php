@@ -23,10 +23,11 @@ class AssistantSearch extends DataTableAction
 			->alias('a')
 			->select([
 				'a.id',
-				'a.vector_store_id',
 				'a.name',
-				'a.openai_id',
-				'a.gpt_model',
+				'a.provider',
+				'a.type',
+				'a.model',
+				'a.max_tokens',
 				'a.temperature',
 				'a.top_p',
 				'a.default',
@@ -36,9 +37,9 @@ class AssistantSearch extends DataTableAction
 				'a.status',
 			])
 			->joinWith([
-				'vectorStore vs' => function (ActiveQuery $query) {
+				'knowledgeBases kb' => function (ActiveQuery $query) {
 					$query->andOnCondition([
-						'vs.deleted' => Assistant::NO,
+						'kb.deleted' => Assistant::NO,
 					]);
 				},
 				'creator cr' => function (ActiveQuery $query) {
@@ -52,7 +53,8 @@ class AssistantSearch extends DataTableAction
 			])
 			->andWhere([
 				'a.deleted' => isset($this->requestParams['deleted']) ? $this->requestParams['deleted'] : Assistant::NO,
-			]);
+			])
+			->groupBy(['a.id']);
 	}
 
 	/**
@@ -130,11 +132,17 @@ class AssistantSearch extends DataTableAction
 				'name' => function (Assistant $model) {
 					return $model->name ?: '&mdash;';
 				},
-				'openai_id' => function (Assistant $model) {
-					return $model->openai_id ?: '&mdash;';
+				'provider' => function (Assistant $model) {
+					return Assistant::getProviderTypeLabels()[$model->provider] ?? '&mdash;';
 				},
-				'gpt_model' => function (Assistant $model) {
-					return $model->gpt_model ?: '&mdash;';
+				'type' => function (Assistant $model) {
+					return Assistant::getAssistantTypeLabels()[$model->type] ?? '&mdash;';
+				},
+				'model' => function (Assistant $model) {
+					return $model->model ?: '&mdash;';
+				},
+				'max_tokens' => function (Assistant $model) {
+					return $model->max_tokens ?: '&mdash;';
 				},
 				'temperature' => function (Assistant $model) {
 					return $model->temperature ?: 0;
@@ -142,8 +150,9 @@ class AssistantSearch extends DataTableAction
 				'top_p' => function (Assistant $model) {
 					return $model->top_p ?: 0;
 				},
-				'vector_store' => function (Assistant $model) {
-					return $model->vectorStore->name ?: '&mdash;';
+				'knowledge_bases' => function (Assistant $model) {
+					$names = ArrayHelper::getColumn($model->knowledgeBases, 'name');
+					return $names ? Html::encode(implode(', ', $names)) : '&mdash;';
 				},
 				'defaultValue' => function (Assistant $model) {
 					return $model->default;
@@ -190,8 +199,8 @@ class AssistantSearch extends DataTableAction
 			}
 
 			switch ($column['data']) {
-				case 'vector_store':
-					$query->$filterOperator(['LIKE', 'vs.name', $value]);
+				case 'knowledge_bases':
+					$query->$filterOperator(['LIKE', 'kb.name', $value]);
 					break;
 				case 'created_by':
 					$query->$filterOperator([
@@ -234,8 +243,8 @@ class AssistantSearch extends DataTableAction
 			$sort = mb_strtolower($item['dir']) == 'desc' ? SORT_DESC : SORT_ASC;
 
 			switch ($column['data']) {
-				case 'vector_store':
-					$query->addOrderBy(['vs.name' => $sort]);
+				case 'knowledge_bases':
+					$query->addOrderBy(['kb.name' => $sort]);
 					break;
 				case 'created_by':
 					$query->addOrderBy([

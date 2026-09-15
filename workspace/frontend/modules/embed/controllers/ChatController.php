@@ -3,9 +3,10 @@
 namespace frontend\modules\embed\controllers;
 
 use common\models\Assistant;
-use common\models\Integration;
+use common\models\Conversation;
 use common\models\Message;
-use common\models\Thread;
+use common\services\OpenAIResponsesService;
+use common\services\OpenAiRecordVectorStoreService;
 use Google\Cloud\TextToSpeech\V1\TextToSpeechClient;
 use Google\Cloud\TextToSpeech\V1\SynthesisInput;
 use Google\Cloud\TextToSpeech\V1\VoiceSelectionParams;
@@ -18,6 +19,14 @@ use yii\filters\VerbFilter;
 use yii\validators\EmailValidator;
 use yii\web\Response;
 
+/**
+ * The embed chat widget endpoints.
+ *
+ * A widget session is a local {@see Conversation} row whose public token is the OpenAI
+ * conversation id (`openai_conversation_id`); the turns are answered through the OpenAI
+ * Responses API with `file_search` over the vector stores of the chat {@see Assistant}'s
+ * knowledge bases (see {@see OpenAIResponsesService::createConversationResponse()}).
+ */
 class ChatController extends DefaultController
 {
 	/**
@@ -26,142 +35,161 @@ class ChatController extends DefaultController
 	public function behaviors()
 	{
 		$behaviors = parent::behaviors();
-        $behaviors['verbs'] = [
-		'class' => VerbFilter::class,
+		$behaviors['verbs'] = [
+			'class' => VerbFilter::class,
 			'actions' => [
 				'index' => ['GET', 'POST'],
 				'speak' => ['POST'],
-				'thread' => ['POST'],
+				'conversation' => ['POST'],
+				'validate-conversation' => ['GET'],
+				'send-conversation' => ['POST'],
 			],
 		];
-        return $behaviors;
+		return $behaviors;
 	}
 
-
+	/**
+	 * Renders the widget (GET) or answers one turn (POST `prompt` + `conversation_id`).
+	 *
+	 * @return mixed
+	 */
 	public function actionIndex()
 	{
 		$this->layout = 'embed';
 
-		if (Yii::$app->request->isAjax || Yii::$app->request->isPost) {
-			Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
-
-			$prompt   = Yii::$app->request->post('prompt');
-			$threadId = Yii::$app->request->post('thread_id');
-
-			if (empty($prompt)) {
-				return ['error' => 'No prompt provided'];
-			}
-
-			if (empty($threadId)) {
-				return ['error' => 'Missing thread ID'];
-			}
-
-			$integration = Integration::find()->where([
-				'status' => Integration::STATUS_ACTIVE,
-				'deleted' => Integration::NO,
-				'type' => Integration::TYPE_OPENAI,
-				'default' => Integration::YES,
-			])->one();
-
-			$assistant = Assistant::find()->where([
-				'status' => Assistant::STATUS_ACTIVE,
-				'deleted' => Assistant::NO,
-				'default' => Assistant::YES,
-			])->one();
-
-			$thread = Thread::find()->where([
-				'status' => Thread::STATUS_ACTIVE,
-				'deleted' => Thread::NO,
-				'openai_id' => $threadId,
-			])->one();
-
-			if (!$integration || !$assistant || !$thread) {
-				return ['error' => 'Missing assistant, integration, or thread.'];
-			}
-
-			$apiKey = $integration->data;
-			$endpoint = 'https://api.openai.com/v1/chat/completions';
-
-			$data = [
-				'model' => $assistant->model ?? 'gpt-4-turbo',
-				'messages' => [
-					['role' => 'system', 'content' => $assistant->instructions ?? 'You are a helpful assistant.'],
-					['role' => 'user', 'content' => $prompt],
-				],
-				'temperature' => (float)($assistant->temperature ?? 0.7),
-				'top_p' => (float)($assistant->top_p ?? 0.9),
-			];
-
-			// Log request
-			Yii::info('OpenAI request: ' . json_encode($data), __METHOD__);
-
-			$ch = curl_init($endpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Content-Type: application/json',
-				'Authorization: Bearer ' . $apiKey,
-			]);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-
-			$response = curl_exec($ch);
-			$error = curl_error($ch);
-			curl_close($ch);
-
-			if ($error) {
-				return ['error' => 'OpenAI cURL error: ' . $error];
-			}
-
-			$resultData = json_decode($response, true);
-			Yii::info('OpenAI response: ' . json_encode($resultData), __METHOD__);
-
-			$reply = $resultData['choices'][0]['message']['content'] ?? null;
-
-			if (!empty($reply)) {
-				$transaction = Yii::$app->db->beginTransaction();
-
-				try {
-					$userMessage = new Message([
-						'thread_id'    => $thread->id,
-						'assistant_id' => $assistant->id,
-						'role'         => Message::ROLE_USER,
-						'content'      => $prompt,
-						'status'       => Message::STATUS_COMPLETED,
-					]);
-
-					if (!$userMessage->save()) {
-						throw new \RuntimeException('User message save failed: ' . json_encode($userMessage->getErrors()));
-					}
-
-					$openaiMessageId = $resultData['id'] ?: null;
-					$assistantMessage = new Message([
-						'openai_id'    => $openaiMessageId,
-						'thread_id'    => $thread->id,
-						'assistant_id' => $assistant->id,
-						'role'         => Message::ROLE_ASSISTANT,
-						'content'      => $reply,
-						'status'       => Message::STATUS_COMPLETED,
-					]);
-
-					if (!$assistantMessage->save()) {
-						throw new \RuntimeException('Assistant message save failed: ' . json_encode($assistantMessage->getErrors()));
-					}
-
-					$transaction->commit();
-
-					return ['reply' => $reply];
-
-				} catch (\Throwable $e) {
-					$transaction->rollBack();
-					Yii::error('Transaction failed: ' . $e->getMessage(), __METHOD__);
-					return ['error' => 'Message save failed.', 'details' => $e->getMessage()];
-				}
-			}
-
-			return ['error' => 'No reply received from OpenAI.'];
+		if (!Yii::$app->request->isAjax && !Yii::$app->request->isPost) {
+			return $this->render('index');
 		}
 
-		return $this->render('index');
+		Yii::$app->response->format = Response::FORMAT_JSON;
+
+		$prompt = trim((string) Yii::$app->request->post('prompt'));
+		$conversationToken = trim((string) Yii::$app->request->post('conversation_id'));
+
+		if ($prompt === '') {
+			return ['error' => 'No prompt provided'];
+		}
+		if ($conversationToken === '') {
+			return ['error' => 'Missing conversation ID'];
+		}
+
+		$conversation = Conversation::findByOpenAIConversationId($conversationToken);
+		if ($conversation === null) {
+			return ['error' => Yii::t('common', 'Conversation not found.')];
+		}
+
+		if (!OpenAIResponsesService::isApiKeyConfigured()) {
+			return ['error' => Yii::t('common', 'The chat is not configured yet.')];
+		}
+
+		$config = $this->resolveChatConfig();
+
+		try {
+			$openaiConversationId = OpenAIResponsesService::ensureConversation($conversation);
+			$reply = OpenAIResponsesService::createConversationResponse(
+				$config['model'],
+				$prompt,
+				$openaiConversationId,
+				$config['instructions'],
+				$config['vectorStoreIds'],
+				$config['temperature'],
+				$config['topP']
+			);
+		} catch (\Throwable $e) {
+			Yii::error('Embed chat failed: ' . $e->getMessage(), __METHOD__);
+			return ['error' => Yii::t('common', 'AI service is temporarily unavailable.')];
+		}
+
+		$reply = trim((string) $reply);
+		if ($reply === '') {
+			$reply = Yii::t('common', 'Could not generate a response. Try rephrasing your request.');
+		}
+
+		$transaction = Yii::$app->db->beginTransaction();
+		try {
+			$this->saveMessage($conversation, $config['assistant'], Message::ROLE_USER, $prompt);
+			$this->saveMessage($conversation, $config['assistant'], Message::ROLE_ASSISTANT, $reply);
+			if (empty($conversation->summary)) {
+				$conversation->updateAttributes(['summary' => mb_substr($prompt, 0, 255)]);
+			}
+			$transaction->commit();
+		} catch (\Throwable $e) {
+			$transaction->rollBack();
+			Yii::error('Embed chat message save failed: ' . $e->getMessage(), __METHOD__);
+			return ['error' => 'Message save failed.'];
+		}
+
+		return ['reply' => $reply];
+	}
+
+	/**
+	 * Persists one turn of the conversation.
+	 *
+	 * @param Conversation $conversation
+	 * @param Assistant|null $assistant
+	 * @param string $role
+	 * @param string $content
+	 * @return Message
+	 * @throws \RuntimeException when the row cannot be saved
+	 */
+	protected function saveMessage(Conversation $conversation, ?Assistant $assistant, $role, $content)
+	{
+		$message = new Message([
+			'conversation_id' => $conversation->id,
+			'assistant_id' => $assistant !== null ? $assistant->id : null,
+			'role' => $role,
+			'content' => $content,
+			'completed_at' => date('Y-m-d H:i:s'),
+			'status' => Message::STATUS_COMPLETED,
+		]);
+		if (!$message->save()) {
+			throw new \RuntimeException(ucfirst($role) . ' message save failed: ' . json_encode($message->getErrors()));
+		}
+		return $message;
+	}
+
+	/**
+	 * Resolves what drives the chat: the default chat {@see Assistant} (model, instructions, sampling,
+	 * linked knowledge bases) or, when none is configured, the `chat*` params and the knowledge base
+	 * resolved by {@see OpenAiRecordVectorStoreService::resolveKnowledgeBase()}.
+	 *
+	 * @return array{assistant: Assistant|null, model: string, instructions: string, vectorStoreIds: string[], temperature: float|null, topP: float|null}
+	 */
+	protected function resolveChatConfig()
+	{
+		$assistant = Assistant::findChatAssistant();
+
+		$model = $assistant !== null && !empty($assistant->model)
+			? (string) $assistant->model
+			: (string) (Yii::$app->params['chatModel'] ?? 'gpt-5.4-mini');
+		$instructions = $assistant !== null && trim((string) $assistant->instructions) !== ''
+			? (string) $assistant->instructions
+			: (string) (Yii::$app->params['chatInstructions'] ?? '');
+
+		$vectorStoreIds = $assistant !== null ? $assistant->collectVectorStoreIds() : [];
+		if ($vectorStoreIds === []) {
+			$knowledgeBase = OpenAiRecordVectorStoreService::resolveKnowledgeBase();
+			if ($knowledgeBase !== null && !empty($knowledgeBase->vector_store_id)) {
+				$vectorStoreIds = [(string) $knowledgeBase->vector_store_id];
+			}
+		}
+
+		// GPT-5.x reasoning models reject the sampling parameters — send them only to legacy models.
+		$temperature = null;
+		$topP = null;
+		if ($assistant !== null && !str_starts_with($model, 'gpt-5')) {
+			$temperature = $assistant->temperature !== null && $assistant->temperature !== '' ? (float) $assistant->temperature : null;
+			$topP = $assistant->top_p !== null && $assistant->top_p !== '' ? (float) $assistant->top_p : null;
+		}
+
+		return [
+			'assistant' => $assistant,
+			'model' => $model,
+			'instructions' => $instructions,
+			'vectorStoreIds' => $vectorStoreIds,
+			'temperature' => $temperature,
+			'topP' => $topP,
+		];
 	}
 
 	/**
@@ -242,152 +270,103 @@ XML;
 	}
 
 	/**
-	 * AJAX endpoint: create thread
+	 * AJAX endpoint: starts a new conversation (an OpenAI conversation object + the local row).
 	 *
-	 * @return mixed
+	 * @return array
 	 */
-	public function actionThread()
+	public function actionConversation()
 	{
 		Yii::$app->response->format = Response::FORMAT_JSON;
+
+		if (!OpenAIResponsesService::isApiKeyConfigured()) {
+			return ['success' => false, 'error' => Yii::t('common', 'The chat is not configured yet.')];
+		}
 
 		try {
-			// 1. Get active OpenAI integration
-			$integration = Integration::find()
-				->where([
-					'status'  => Integration::STATUS_ACTIVE,
-					'deleted' => Integration::NO,
-					'type'    => Integration::TYPE_OPENAI,
-					'default' => Integration::YES,
-				])
-				->one();
-
-			if (!$integration) {
-				return ['success' => false, 'error' => 'No OpenAI integration found.'];
-			}
-
-			$apiKey = $integration->data;
-
-			// 2. Prepare cURL call to OpenAI
-			$endpoint = 'https://api.openai.com/v1/threads';
-
-			$ch = curl_init($endpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Content-Type: application/json',
-				'Authorization: Bearer ' . $apiKey,
-				'OpenAI-Beta: assistants=v2',
-			]);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, '{}'); // Empty body to create blank thread
-
-			$response = curl_exec($ch);
-			$error    = curl_error($ch);
-			curl_close($ch);
-
-			if ($error) {
-				return ['success' => false, 'error' => 'cURL error: ' . $error];
-			}
-
-			$result = json_decode($response, true);
-
-			if (empty($result['id'])) {
-				return ['success' => false, 'error' => 'OpenAI thread creation failed.', 'response' => $result];
-			}
-
-			$openaiThreadId = $result['id'];
-
-			// 3. Save to DB
-			$thread = new Thread();
-			$thread->openai_id = $openaiThreadId;
-			$thread->status = Thread::STATUS_ACTIVE;
-
-			if (!$thread->save()) {
-				return [
-					'success' => false,
-					'error' => 'Failed to save thread to database.',
-					'details' => $thread->getErrors(),
-				];
-			}
-
-			// 4. Return thread ID
-			return [
-				'success'   => true,
-				'thread_id' => $thread->openai_id,
-			];
-
+			$openaiConversationId = OpenAIResponsesService::createConversation();
 		} catch (\Throwable $e) {
-			Yii::error('Thread creation error: ' . $e->getMessage(), __METHOD__);
+			Yii::error('Conversation creation error: ' . $e->getMessage(), __METHOD__);
+			return ['success' => false, 'error' => Yii::t('common', 'AI service is temporarily unavailable.')];
+		}
+
+		$conversation = new Conversation();
+		$conversation->openai_conversation_id = $openaiConversationId;
+		$conversation->status = Conversation::STATUS_ACTIVE;
+		$conversation->deleted = Conversation::NO;
+
+		if (!$conversation->save()) {
 			return [
 				'success' => false,
-				'error'   => 'Exception occurred.',
-				'message' => $e->getMessage(),
+				'error' => 'Failed to save conversation to database.',
+				'details' => $conversation->getErrors(),
 			];
 		}
+
+		return [
+			'success' => true,
+			'conversation_id' => $conversation->openai_conversation_id,
+		];
 	}
 
-	public function actionValidateThread($id)
+	/**
+	 * AJAX endpoint: whether the stored conversation token still points to an active conversation.
+	 *
+	 * @param string $id
+	 * @return array
+	 */
+	public function actionValidateConversation($id)
 	{
 		Yii::$app->response->format = Response::FORMAT_JSON;
 
-		$thread = Thread::find()->where([
-			'openai_id' => $id,
-			'status' => Thread::STATUS_ACTIVE,
-			'deleted' => Thread::NO,
-		])->one();
-
-		return ['valid' => $thread !== null];
+		return ['valid' => Conversation::findByOpenAIConversationId($id) !== null];
 	}
 
+	/**
+	 * AJAX endpoint: emails the transcript of a conversation (JSON body: `email`, `conversation_id`).
+	 *
+	 * @return array
+	 */
 	public function actionSendConversation()
 	{
 		Yii::$app->response->format = Response::FORMAT_JSON;
 
-		$data = Yii::$app->request->getRawBody();
-		$payload = json_decode($data, true);
-
-		if (json_last_error() !== JSON_ERROR_NONE) {
+		$payload = json_decode((string) Yii::$app->request->getRawBody(), true);
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload)) {
 			return ['success' => false, 'error' => 'Invalid JSON.'];
 		}
 
-		$email = $payload['email'] ?? '';
-		$threadId = $payload['thread_id'] ?? null;
+		$email = trim((string) ($payload['email'] ?? ''));
+		$conversationToken = trim((string) ($payload['conversation_id'] ?? ''));
 
 		$validator = new EmailValidator();
 		if (!$validator->validate($email)) {
 			return ['success' => false, 'error' => 'Invalid email address.'];
 		}
-
-		if (empty($threadId)) {
-			return ['success' => false, 'error' => 'Missing thread ID.'];
+		if ($conversationToken === '') {
+			return ['success' => false, 'error' => 'Missing conversation ID.'];
 		}
 
-		$thread = Thread::find()->where([
-			'openai_id' => $threadId,
-			'status' => Thread::STATUS_ACTIVE,
-			'deleted' => Thread::NO,
-		])->one();
-
-		if (!$thread) {
-			return ['success' => false, 'error' => 'Thread not found.'];
+		$conversation = Conversation::findByOpenAIConversationId($conversationToken);
+		if ($conversation === null) {
+			return ['success' => false, 'error' => Yii::t('common', 'Conversation not found.')];
 		}
 
 		$messages = Message::find()
-			->where(['thread_id' => $thread->id])
+			->where(['conversation_id' => $conversation->id, 'deleted' => Message::NO])
 			->orderBy(['id' => SORT_ASC])
 			->all();
-
 		if (empty($messages)) {
 			return ['success' => false, 'error' => 'No messages found.'];
 		}
 
-		// Convert messages to HTML using CommonMark
+		// Assistant replies are Markdown; the user turns are plain text.
 		$converter = new CommonMarkConverter();
-		$htmlBody = '<h2>Conversația cu ' . Yii::$app->name . '</h2><hr>';
+		$htmlBody = '<h2>' . Yii::t('common', 'Your conversation with {name}', ['name' => Yii::$app->name]) . '</h2><hr>';
 		$plainTextBody = '';
 
 		foreach ($messages as $message) {
-			$role = ucfirst($message->role);
-			$rawContent = trim($message->content);
+			$role = Message::getRoleLabels()[$message->role] ?? ucfirst((string) $message->role);
+			$rawContent = trim((string) $message->content);
 			$convertedHtml = $message->role === Message::ROLE_ASSISTANT
 				? $converter->convertToHtml($rawContent)
 				: nl2br(htmlspecialchars($rawContent));
@@ -398,7 +377,7 @@ XML;
 
 		$sent = Yii::$app->mailer->compose()
 			->setTo($email)
-			->setSubject('Conversația ta cu ' . Yii::$app->name)
+			->setSubject(Yii::t('common', 'Your conversation with {name}', ['name' => Yii::$app->name]))
 			->setTextBody($plainTextBody)
 			->setHtmlBody("<html><body>{$htmlBody}</body></html>")
 			->send();

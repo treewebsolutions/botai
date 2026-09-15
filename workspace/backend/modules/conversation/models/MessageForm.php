@@ -17,7 +17,7 @@ class MessageForm extends Message
 		parent::init();
 
 		$this->role = static::ROLE_USER;
-		$this->status = static::STATUS_ACTIVE;
+		$this->status = static::STATUS_COMPLETED;
 	}
 
 	/**
@@ -35,7 +35,7 @@ class MessageForm extends Message
 	public function attributeLabels()
 	{
 		return ArrayHelper::merge(parent::attributeLabels(), [
-			'thread_id' => Yii::t('label', 'Thread'),
+			'conversation_id' => Yii::t('label', 'Conversation'),
 		]);
 	}
 

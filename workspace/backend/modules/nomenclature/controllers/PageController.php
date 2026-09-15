@@ -6,6 +6,7 @@ use backend\controllers\MainController;
 use backend\modules\nomenclature\models\PageForm;
 use backend\modules\nomenclature\models\PageSearch;
 use common\models\Page;
+use common\services\OpenAiRecordVectorStoreService;
 use Yii;
 use yii\filters\AccessControl;
 use yii\helpers\FileHelper;
@@ -219,6 +220,7 @@ class PageController extends MainController
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
 			$deletedModels = [];
+			$purgeMeta = [];
 			/** @var Page $model */
 			foreach ($models->each() as $model) {
 				Yii::$app->eventLog
@@ -226,8 +228,12 @@ class PageController extends MainController
 						'operation' => $isPermanent ? (Yii::$app->eventLog)::ACTION_DELETE : (Yii::$app->eventLog)::ACTION_SOFT_DELETE,
 					])
 					->beginRecord($model);
+				// Hard delete: drop the vector index row now (the FK would cascade anyway) and purge the OpenAI
+				// objects after the response; soft delete: withdraw the page from the vector store.
+				$indexMeta = $isPermanent ? OpenAiRecordVectorStoreService::detachPageIndexRow($model->id) : null;
 				if ($model->delete($isPermanent)) {
 					$deletedModels[] = $model->id;
+					$purgeMeta[$model->id] = $indexMeta;
 					Yii::$app->eventLog->endRecord();
 				} else {
 					throw new \Exception();
@@ -240,6 +246,13 @@ class PageController extends MainController
 			}
 			Yii::$app->trigger('invalidate.cache', new \tws\caching\CacheEvent(['key' => 'findAllPages']));
 			$dbTransaction->commit();
+			foreach ($deletedModels as $deletedModel) {
+				if ($isPermanent) {
+					OpenAiRecordVectorStoreService::scheduleRemotePurge($purgeMeta[$deletedModel] ?? null);
+				} else {
+					OpenAiRecordVectorStoreService::scheduleWithdraw($deletedModel);
+				}
+			}
 		} catch (\Exception $e) {
 			$dbTransaction->rollBack();
 			$response['success'] = false;
@@ -277,10 +290,12 @@ class PageController extends MainController
 		];
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
+			$restoredModels = [];
 			/** @var Page $model */
 			foreach ($models->each() as $model) {
 				Yii::$app->eventLog->beginRecord($model);
 				if ($model->restore()) {
+					$restoredModels[] = $model->id;
 					Yii::$app->eventLog->endRecord();
 				} else {
 					throw new \Exception();
@@ -288,6 +303,10 @@ class PageController extends MainController
 			}
 			Yii::$app->trigger('invalidate.cache', new \tws\caching\CacheEvent(['key' => 'findAllPages']));
 			$dbTransaction->commit();
+			// Back in the listing => back in the vector store (no-op when no Knowledge Base is configured).
+			foreach ($restoredModels as $restoredModel) {
+				OpenAiRecordVectorStoreService::scheduleSync($restoredModel);
+			}
 		} catch (\Exception $e) {
 			$dbTransaction->rollBack();
 			$response['success'] = false;

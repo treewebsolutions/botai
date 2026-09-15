@@ -117,12 +117,13 @@ $this->params['breadcrumbs'][] = $this->title;
 				<?= $form->field($model, 'phone')->input('tel') ?>
 			</div>
 		</div>
+		<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
 		<div class="row">
 			<div class="col-sm-6">
-				<?= $form->field($model, 'new_password')->passwordInput() ?>
+				<?= $form->field($model, 'new_password', ['template' => $secretFieldTemplate])->passwordInput() ?>
 			</div>
 			<div class="col-sm-6">
-				<?= $form->field($model, 'new_password_confirm')->passwordInput() ?>
+				<?= $form->field($model, 'new_password_confirm', ['template' => $secretFieldTemplate])->passwordInput() ?>
 			</div>
 		</div>
 		<div class="row">

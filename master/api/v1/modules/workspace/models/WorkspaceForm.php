@@ -193,35 +193,6 @@ class WorkspaceForm extends Workspace
 	}
 
 	/**
-	 * Save url for current workspace
-	 *
-	 * @return bool
-	 */
-	public function saveUrl($url)
-	{
-		$this->updateHtaccess();
-		$dirPath = Yii::getAlias("@workspace/workspaces/{$this->id}");
-		// Update the configuration files
-		$filePaths = [
-			"{$dirPath}/common/config/main.php",
-			"{$dirPath}/api/config/main.php",
-			"{$dirPath}/backend/config/main.php",
-			"{$dirPath}/frontend/config/main.php",
-			"{$dirPath}/console/config/main.php",
-		];
-		foreach ($filePaths as $filePath) {
-			if (is_file($filePath)) {
-				file_put_contents($filePath, strtr(file_get_contents($filePath), [
-					"'baseUrl' => '/$url'" => "'baseUrl' => '/$this->url'",
-				]));
-				file_put_contents($filePath, strtr(file_get_contents($filePath), [
-					"'baseUrl' => '/$url/api'" => "'baseUrl' => '/$this->url/api'",
-				]));
-			}
-		}
-	}
-
-	/**
 	 * {@inheritdoc}
 	 */
 	public function save($runValidation = true, $attributeNames = null)

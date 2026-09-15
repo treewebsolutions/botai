@@ -13,55 +13,55 @@ class Chat {
 		this.newConversationButton = $('.chat-new-conversation');
 		this.modal = $('#new-conversation-modal');
 		this.isRecognitionActive = false;
-		this.threadId = this.getStoredThreadId();
+		this.conversationId = this.getStoredConversationId();
 	}
 
 	async init() {
-		if (this.threadId) {
-			const isValid = await this.validateThread(this.threadId);
+		if (this.conversationId) {
+			const isValid = await this.validateConversation(this.conversationId);
 			if (!isValid) {
-				console.warn('Stored thread ID is invalid. Creating a new one.');
-				this.threadId = null;
-				localStorage.removeItem('thread_id');
+				console.warn('Stored conversation ID is invalid. Creating a new one.');
+				this.conversationId = null;
+				localStorage.removeItem('conversation_id');
 			}
 		}
-		if (!this.threadId) {
-			await this.createThread();
+		if (!this.conversationId) {
+			await this.createConversation();
 		}
 		this.setupEventListeners();
 		this.loadConversation();
 		this.sendDimensions();
 	}
 
-	getStoredThreadId() {
-		return localStorage.getItem('thread_id') || null;
+	getStoredConversationId() {
+		return localStorage.getItem('conversation_id') || null;
 	}
 
-	setStoredThreadId(threadId) {
-		this.threadId = threadId;
-		localStorage.setItem('thread_id', threadId);
+	setStoredConversationId(conversationId) {
+		this.conversationId = conversationId;
+		localStorage.setItem('conversation_id', conversationId);
 	}
 
-	async validateThread(threadId) {
+	async validateConversation(conversationId) {
 		try {
-			const response = await $.get(`chat/validate-thread?id=${threadId}`);
+			const response = await $.get(`chat/validate-conversation?id=${conversationId}`);
 			return response.valid;
 		} catch (e) {
-			console.error('Thread validation failed:', e);
+			console.error('Conversation validation failed:', e);
 			return false;
 		}
 	}
 
-	async createThread() {
+	async createConversation() {
 		try {
-			const res = await $.post('chat/thread');
-			if (res.thread_id) {
-				this.setStoredThreadId(res.thread_id);
+			const res = await $.post('chat/conversation');
+			if (res.conversation_id) {
+				this.setStoredConversationId(res.conversation_id);
 			} else {
-				console.error('Failed to create a thread:', res.error);
+				console.error('Failed to create a conversation:', res.error);
 			}
 		} catch (e) {
-			console.error('Thread creation error:', e);
+			console.error('Conversation creation error:', e);
 		}
 	}
 
@@ -209,16 +209,16 @@ class Chat {
 		window.parent.postMessage('requestDimensions', '*');
 		this.sendDimensions();
 
-		if (!this.threadId) {
+		if (!this.conversationId) {
 			try {
-				const res = await $.post('chat/thread');
-				if (res.thread_id) {
-					this.setStoredThreadId(res.thread_id);
+				const res = await $.post('chat/conversation');
+				if (res.conversation_id) {
+					this.setStoredConversationId(res.conversation_id);
 				} else {
-					throw new Error('No thread ID returned');
+					throw new Error('No conversation ID returned');
 				}
 			} catch (e) {
-				botMessageDiv.text('Error: Unable to create a thread.');
+				botMessageDiv.text('Error: Unable to create a conversation.');
 				return;
 			}
 		}
@@ -228,7 +228,7 @@ class Chat {
 			type: 'POST',
 			data: {
 				prompt: userMessage,
-				thread_id: this.threadId
+				conversation_id: this.conversationId
 			},
 			success: async (response) => {
 				if (response.reply) {
@@ -293,7 +293,7 @@ class Chat {
 			window.parent.postMessage({
 				type: 'get-conversation',
 				requestId,
-				sessionId: this.threadId
+				sessionId: this.conversationId
 			}, '*');
 		});
 	}
@@ -301,7 +301,7 @@ class Chat {
 	setConversation(conversation) {
 		window.parent.postMessage({
 			type: 'set-conversation',
-			sessionId: this.threadId,
+			sessionId: this.conversationId,
 			conversation
 		}, '*');
 	}
@@ -311,8 +311,8 @@ class Chat {
 	}
 
 	async sendConversationByEmail(email) {
-		if (!this.threadId) {
-			alert('No thread ID available.');
+		if (!this.conversationId) {
+			alert('No conversation ID available.');
 			return;
 		}
 
@@ -324,7 +324,7 @@ class Chat {
 			type: 'POST',
 			data: JSON.stringify({
 				email,
-				thread_id: this.threadId
+				conversation_id: this.conversationId
 			}),
 			contentType: 'application/json; charset=utf-8',
 			dataType: 'json',
@@ -362,33 +362,33 @@ class Chat {
 	}
 
 	startNewConversation() {
-		// Store old thread ID before clearing
-		const oldThreadId = this.threadId;
+		// Store old conversation ID before clearing
+		const oldConversationId = this.conversationId;
 		
 		// Clear local storage
-		localStorage.removeItem('thread_id');
+		localStorage.removeItem('conversation_id');
 		
-		// Clear conversation from local storage using the old thread ID
-		if (oldThreadId) {
-			const conversationKey = 'conversation_thread_' + oldThreadId;
+		// Clear conversation from local storage using the old conversation ID
+		if (oldConversationId) {
+			const conversationKey = 'conversation_' + oldConversationId;
 			localStorage.removeItem(conversationKey);
 		}
 		
 		// Clear conversation from parent window
 		window.parent.postMessage({
 			type: 'clear-conversation',
-			sessionId: oldThreadId
+			sessionId: oldConversationId
 		}, '*');
 		
-		// Reset thread ID
-		this.threadId = null;
+		// Reset conversation ID
+		this.conversationId = null;
 		
 		// Clear chat body
 		this.chatBody.empty();
 		this.updatePadding();
 		
-		// Create new thread
-		this.createThread().then(() => {
+		// Create new conversation
+		this.createConversation().then(() => {
 			this.hideNewConversationModal();
 			this.loadConversation();
 		});

@@ -24,7 +24,7 @@ class MessageSearch extends DataTableAction
 			->alias('m')
 			->select([
 				'm.id',
-				'm.thread_id',
+				'm.conversation_id',
 				'm.assistant_id',
 				'm.openai_id',
 				'm.role',
@@ -37,9 +37,9 @@ class MessageSearch extends DataTableAction
 				'm.status',
 			])
 			->joinWith([
-				'thread t' => function (ActiveQuery $query) {
+				'conversation c' => function (ActiveQuery $query) {
 					$query->andOnCondition([
-						't.deleted' => Message::NO,
+						'c.deleted' => Message::NO,
 					]);
 				},
 				'assistant a' => function (ActiveQuery $query) {
@@ -138,11 +138,11 @@ class MessageSearch extends DataTableAction
 				'role' => function (Message $model) {
 					return $model->role ? Message::getRoleLabels()[$model->role] : '&mdash;';
 				},
-				'thread' => function (Message $model) {
-					return $model->thread->openai_id ?: '&mdash;';
+				'conversation' => function (Message $model) {
+					return $model->conversation ? ($model->conversation->summary ?: $model->conversation->openai_conversation_id ?: '#' . $model->conversation->id) : '&mdash;';
 				},
 				'assistant' => function (Message $model) {
-					return $model->assistant->name ?: '&mdash;';
+					return $model->assistant ? $model->assistant->name : '&mdash;';
 				},
 				'openai_id' => function (Message $model) {
 					return $model->openai_id ?: '&mdash;';
@@ -192,8 +192,8 @@ class MessageSearch extends DataTableAction
 			}
 
 			switch ($column['data']) {
-				case 'thread':
-					$query->$filterOperator(['LIKE', 't.openai_id', $value]);
+				case 'conversation':
+					$query->$filterOperator(['OR', ['LIKE', 'c.summary', $value], ['LIKE', 'c.openai_conversation_id', $value]]);
 					break;
 				case 'assistant':
 					$query->$filterOperator(['LIKE', 'a.name', $value]);
@@ -231,8 +231,8 @@ class MessageSearch extends DataTableAction
 			$sort = mb_strtolower($item['dir']) == 'desc' ? SORT_DESC : SORT_ASC;
 
 			switch ($column['data']) {
-				case 'thread':
-					$query->addOrderBy(['t.openai_id' => $sort]);
+				case 'conversation':
+					$query->addOrderBy(['c.summary' => $sort, 'c.openai_conversation_id' => $sort]);
 					break;
 				case 'assistant':
 					$query->addOrderBy(['a.name' => $sort]);

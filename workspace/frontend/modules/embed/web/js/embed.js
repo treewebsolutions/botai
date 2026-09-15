@@ -200,7 +200,7 @@
 			var self = this;
 			window.addEventListener("message", function (event) {
 				var message = event.data;
-				const key = 'conversation_thread_' + (message.sessionId || 'default');
+				const key = 'conversation_' + (message.sessionId || 'default');
 
 				if (message && message.type === "resize") {
 					var iframe = document.getElementById(self.namespace + '-iframe');

@@ -862,8 +862,10 @@ class InterfaceSettingForm extends Setting
 			// Generate CSS content
 			$cssContent = $this->generateVariablesCss();
 			
-			// Get uploads directory path
-			$uploadsPath = Yii::getAlias('@workspaces') . '/' . $workspace->id . '/uploads';
+			// Get uploads directory path. The tenant's own uploads directory is @uploads
+			// (set by <tenant>/common/config/bootstrap.php); tenant directories live in
+			// <root>/workspaces/<domain>/ and are no longer keyed by the numeric ID.
+			$uploadsPath = Yii::getAlias('@uploads');
 			
 			// Ensure directory exists
 			if (!is_dir($uploadsPath)) {

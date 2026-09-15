@@ -11,7 +11,7 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  * This is the model class for table "{{%message}}".
  *
  * @property int $id
- * @property int $thread_id
+ * @property int $conversation_id
  * @property int $assistant_id
  * @property string $openai_id
  * @property string $role
@@ -25,14 +25,14 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  * @property int $deleted
  *
  * @property Assistant $assistant
- * @property Thread $thread
+ * @property Conversation $conversation
  * @property Participant $creator
  */
 class Message extends CommonActiveRecord
 {
 	const STATUS_IN_PROGRESS = 'in_progress';
-	const STATUS_COMPLETED = 'incomplete';
-	const STATUS_INCOMPLETE = 'completed';
+	const STATUS_COMPLETED = 'completed';
+	const STATUS_INCOMPLETE = 'incomplete';
 
 	const ROLE_USER = 'user';
 	const ROLE_ASSISTANT = 'assistant';
@@ -76,13 +76,13 @@ class Message extends CommonActiveRecord
     public function rules()
     {
         return [
-            [['thread_id'], 'required'],
-            [['thread_id', 'assistant_id', 'created_by', 'deleted'], 'integer'],
+            [['conversation_id'], 'required'],
+            [['conversation_id', 'assistant_id', 'created_by', 'deleted'], 'integer'],
             [['content'], 'string'],
             [['completed_at', 'incomplete_at', 'created_at'], 'safe'],
             [['openai_id', 'role', 'incomplete_reason', 'status'], 'string', 'max' => 255],
             [['assistant_id'], 'exist', 'skipOnError' => true, 'targetClass' => Assistant::class, 'targetAttribute' => ['assistant_id' => 'id']],
-            [['thread_id'], 'exist', 'skipOnError' => true, 'targetClass' => Thread::class, 'targetAttribute' => ['thread_id' => 'id']],
+            [['conversation_id'], 'exist', 'skipOnError' => true, 'targetClass' => Conversation::class, 'targetAttribute' => ['conversation_id' => 'id']],
         ];
     }
 
@@ -93,7 +93,7 @@ class Message extends CommonActiveRecord
     {
         return [
             'id' => Yii::t('label', 'ID'),
-            'thread_id' => Yii::t('label', 'Thread ID'),
+            'conversation_id' => Yii::t('label', 'Conversation ID'),
             'assistant_id' => Yii::t('label', 'Assistant ID'),
             'openai_id' => Yii::t('label', 'OpenAI ID'),
             'role' => Yii::t('label', 'Role'),
@@ -119,9 +119,9 @@ class Message extends CommonActiveRecord
     /**
      * @return \yii\db\ActiveQuery
      */
-    public function getThread()
+    public function getConversation()
     {
-        return $this->hasOne(Thread::class, ['id' => 'thread_id']);
+        return $this->hasOne(Conversation::class, ['id' => 'conversation_id']);
     }
 
 	/**
@@ -150,7 +150,7 @@ class Message extends CommonActiveRecord
 			],
 			self::STATUS_INCOMPLETE => [
 				'label' => Yii::t('label', 'Incomplete'),
-				'color' => 'success',
+				'color' => 'danger',
 			],
 		];
 	}

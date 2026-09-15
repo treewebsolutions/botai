@@ -6,6 +6,7 @@ use backend\controllers\MainController;
 use backend\modules\nomenclature\models\AssistantForm;
 use backend\modules\nomenclature\models\AssistantSearch;
 use common\models\Assistant;
+use common\models\KnowledgeBase;
 use Yii;
 use yii\filters\AccessControl;
 use yii\helpers\FileHelper;
@@ -29,8 +30,8 @@ class AssistantController extends MainController
 					],
 					[
 						'allow' => true,
-						'actions' => ['create'],
-						'roles' => ['createAssistant'],
+						'actions' => ['create', 'get-models', 'get-knowledge-bases'],
+						'roles' => ['createAssistant', 'updateAssistant'],
 					],
 					[
 						'allow' => true,
@@ -229,13 +230,6 @@ class AssistantController extends MainController
 					])
 					->beginRecord($model);
 				if ($model->delete($isPermanent)) {
-					if (!empty($model->openai_id) && !empty($model->readFromOpenAI($model->openai_id))) {
-						$openaiResponse = $model->deleteFromOpenAI($model->openai_id);
-						if (!$openaiResponse) {
-							$response['message']['body'][] = Yii::t('common', 'Failed to delete record from OpenAI.');
-							throw new \Exception();
-						}
-					}
 					$deletedModels[] = $model->id;
 					Yii::$app->eventLog->endRecord();
 				} else {
@@ -309,6 +303,68 @@ class AssistantController extends MainController
 		Yii::$app->session->setFlash($response['success'] ? 'success' : 'error', [$response['message']]);
 
 		return $this->redirect(['index']);
+	}
+
+	/**
+	 * DepDrop endpoint: the model list of the selected provider.
+	 *
+	 * @return \yii\web\Response
+	 */
+	public function actionGetModels()
+	{
+		$provider = Yii::$app->request->post('depdrop_parents');
+		$provider = !empty($provider) && $provider[0] !== '' ? (int) $provider[0] : null;
+
+		$output = [];
+		foreach (Assistant::getGPTModels($provider) as $key => $label) {
+			$output[] = [
+				'id' => $key,
+				'name' => $label,
+			];
+		}
+
+		return $this->asJson(['output' => $output, 'selected' => '']);
+	}
+
+	/**
+	 * DepDrop endpoint: the active knowledge bases of the selected provider, plus the ones already
+	 * linked to the assistant being edited (`assistant_id`).
+	 *
+	 * @return \yii\web\Response
+	 */
+	public function actionGetKnowledgeBases()
+	{
+		$provider = Yii::$app->request->post('depdrop_parents');
+		$provider = !empty($provider) && $provider[0] !== '' ? (int) $provider[0] : null;
+
+		$query = KnowledgeBase::find()
+			->where([
+				'status' => KnowledgeBase::STATUS_ACTIVE,
+				'deleted' => KnowledgeBase::NO,
+			])
+			->orderBy(['name' => SORT_ASC]);
+		if ($provider !== null) {
+			$query->andWhere(['provider' => KnowledgeBase::providerForAssistantProvider($provider)]);
+		}
+
+		$output = [];
+		foreach ($query->all() as $knowledgeBase) {
+			$output[] = [
+				'id' => $knowledgeBase->id,
+				'name' => $knowledgeBase->name,
+			];
+		}
+
+		$selected = '';
+		$assistantId = (int) (Yii::$app->request->get('assistant_id') ?: Yii::$app->request->post('assistant_id'));
+		if ($assistantId > 0) {
+			$assistant = Assistant::findOne($assistantId);
+			if ($assistant !== null) {
+				$selected = implode(',', \yii\helpers\ArrayHelper::getColumn($assistant->knowledgeBases, 'id'));
+			}
+		}
+
+		return $this->asJson(['output' => $output, 'selected' => $selected]);
 	}
 
 	/**

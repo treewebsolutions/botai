@@ -1,0 +1,67 @@
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+
+	# Canonical host: strip the www. prefix and force HTTPS, as a single 301 hop
+	# (http://www.x lands directly on https://x). Otherwise Google sees the same
+	# site under three hosts. Host-guarded, so local dev is never redirected.
+	#
+	# The redirect target path comes from THE_REQUEST (the client's raw request
+	# line), NOT %{REQUEST_URI}: on installs whose domain docroot is the tenant
+	# ROOT, the root .htaccess has already rewritten the URI to frontend/web/...
+	# by the time these per-directory rules run, and REQUEST_URI would leak that
+	# internal path into the redirect (https://x/frontend/web/...).
+	RewriteCond %{THE_REQUEST} ^\S+\s+(\S+)
+	RewriteRule ^ - [E=CANONICAL_PATH:%1]
+	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+	RewriteRule ^ https://%1%{ENV:CANONICAL_PATH} [R=301,L]
+	RewriteCond %{HTTPS} !=on
+	RewriteRule ^ https://%{HTTP_HOST}%{ENV:CANONICAL_PATH} [R=301,L]
+
+  # Missing static assets must not boot the application — return 404 directly
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule \.(css|js|map|jpe?g|png|gif|svg|webp|ico|woff2?|ttf|eot|otf)$ - [R=404,L]
+
+  # If a directory or a file exists, use the request directly
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Otherwise forward the request to index.php
+  RewriteRule . index.php
+</IfModule>
+
+# Compress every text response — HTML, CSS, JS, JSON, SVG, fonts. Production
+# served ~1.5MB of uncompressed text per homepage load without this.
+# AddOutputFilterByType belongs to mod_filter (not mod_deflate), hence the
+# double guard — with either module missing the block is a silent no-op
+# instead of a 500.
+<IfModule mod_deflate.c>
+	<IfModule mod_filter.c>
+		AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+		AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+		AddOutputFilterByType DEFLATE application/javascript application/x-javascript text/javascript application/json
+		AddOutputFilterByType DEFLATE image/svg+xml
+		AddOutputFilterByType DEFLATE application/vnd.ms-fontobject font/ttf font/otf font/opentype
+	</IfModule>
+</IfModule>
+
+# Long-lived caching for static assets. Safe: every CSS/JS URL carries the
+# assetManager ?v= timestamp and uploads get random-suffixed file names, so a
+# changed file always changes its URL. HTML goes through index.php and keeps
+# its own no-cache headers.
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresByType text/css "access plus 1 year"
+	ExpiresByType application/javascript "access plus 1 year"
+	ExpiresByType text/javascript "access plus 1 year"
+	ExpiresByType application/x-javascript "access plus 1 year"
+	ExpiresByType image/png "access plus 1 year"
+	ExpiresByType image/jpeg "access plus 1 year"
+	ExpiresByType image/gif "access plus 1 year"
+	ExpiresByType image/webp "access plus 1 year"
+	ExpiresByType image/svg+xml "access plus 1 year"
+	ExpiresByType image/x-icon "access plus 1 year"
+	ExpiresByType font/woff "access plus 1 year"
+	ExpiresByType font/woff2 "access plus 1 year"
+	ExpiresByType font/ttf "access plus 1 year"
+	ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+</IfModule>

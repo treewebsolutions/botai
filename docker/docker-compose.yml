@@ -89,6 +89,42 @@ services:
       - "host.docker.internal:host-gateway"
 
   # ---------------------------------------------------------------------------
+  # Scheduler. Replaces the per-tenant cPanel cron jobs on local/Docker installs:
+  # every minute it runs `yii schedule/run` for master and for every provisioned
+  # tenant under <root>/workspaces/*/ (Workspace::updateCrontab() is a no-op
+  # outside cPanel). Same image as `web`, so the PHP runtime is identical.
+  # ---------------------------------------------------------------------------
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        EXTRA_APT_PACKAGES: ${EXTRA_APT_PACKAGES:-}
+        EXTRA_PHP_EXTENSIONS: ${EXTRA_PHP_EXTENSIONS:-}
+    container_name: ${PROJECT_NAME:-botai}_scheduler
+    restart: unless-stopped
+    command:
+      - bash
+      - -c
+      - |
+        echo "[scheduler] tick every 60s (master + tenants)"
+        while true; do
+          [ -f /var/www/html/master/yii ] && php /var/www/html/master/yii schedule/run >/dev/null 2>&1 || true
+          for t in /var/www/html/workspaces/*/yii; do
+            [ -f "$$t" ] && php "$$t" schedule/run >/dev/null 2>&1 || true
+          done
+          sleep 60
+        done
+    volumes:
+      - ..:/var/www/html
+      - ./php/zzz-error-reporting.ini:/usr/local/etc/php/conf.d/zzz-error-reporting.ini:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app_net
+
+  # ---------------------------------------------------------------------------
   # phpMyAdmin. Served both at the root path (http://localhost:${PMA_PORT}/)
   # and under the sub-URI (http://localhost:${PMA_PORT}${PMA_SUB_URI}) to match
   # the Laragon default URL.

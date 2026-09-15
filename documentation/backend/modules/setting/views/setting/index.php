@@ -335,7 +335,8 @@ $this->params['breadcrumbs'] = [
 			<?= $form->field($model, 'enableSoftDelete')->checkbox() ?>
 			<div class="row">
 				<div class="col-sm-6">
-					<?= $form->field($model, 'googleMapKey')->textInput([
+					<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
+					<?= $form->field($model, 'googleMapKey', ['template' => $secretFieldTemplate])->passwordInput([
 						'placeholder' => Yii::t('common', 'Example') . ': AIzaSyDaHTRBC6R902Amq',
 					]) ?>
 				</div>
@@ -359,12 +360,12 @@ $this->params['breadcrumbs'] = [
 			</div>
 			<div class="row">
 				<div class="col-sm-6">
-                    <?= $form->field($model, 'reCaptchaSiteKey')->textInput([
+                    <?= $form->field($model, 'reCaptchaSiteKey', ['template' => $secretFieldTemplate])->passwordInput([
                         'placeholder' => Yii::t('common', 'Example') . ': 6LduoREaAAAAAGHJQs4aB3ixRa-HPOePHj-xufJX',
                     ]) ?>
                 </div>
                 <div class="col-sm-6">
-                    <?= $form->field($model, 'reCaptchaSecretKey')->textInput([
+                    <?= $form->field($model, 'reCaptchaSecretKey', ['template' => $secretFieldTemplate])->passwordInput([
                         'placeholder' => Yii::t('common', 'Example') . ': 6LduoREaAAAAABZdP64qNjfU_a7rxnUuvDf1mX_4',
                     ]) ?>
                 </div>

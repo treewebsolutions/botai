@@ -97,7 +97,7 @@ $this->params['actions'] = [
 			}'),
 		],
 		'order' => [
-			[9, 'desc'],
+			[12, 'desc'],
 		],
 		'pageLength' => (int) Yii::$app->settings->get('itemsPerPage'),
 		'lengthMenu' => [
@@ -130,15 +130,22 @@ $this->params['actions'] = [
 				'filter' => ['text'],
 			],
 			[
-				'data' => 'openai_id',
-				'title' => Yii::t('label', 'OpenAI ID'),
-				'filter' => ['text'],
+				'data' => 'provider',
+				'title' => Yii::t('label', 'Provider'),
+				'className' => 'col-autowidth',
+				'filter' => ['select', Assistant::getProviderTypeLabels()],
 			],
 			[
-				'data' => 'gpt_model',
-				'title' => Yii::t('label', 'GPT Model'),
+				'data' => 'type',
+				'title' => Yii::t('label', 'Type'),
 				'className' => 'col-autowidth',
-				'filter' => ['select', array_keys(Assistant::getGPTModels())],
+				'filter' => ['select', Assistant::getAssistantTypeLabels()],
+			],
+			[
+				'data' => 'model',
+				'title' => Yii::t('label', 'Model'),
+				'className' => 'col-autowidth',
+				'filter' => ['select', array_combine(array_keys(Assistant::getGPTModels()), array_keys(Assistant::getGPTModels()))],
 			],
 			[
 				'data' => 'temperature',
@@ -151,8 +158,13 @@ $this->params['actions'] = [
 				'filter' => ['text'],
 			],
 			[
-				'data' => 'vector_store',
-				'title' => Yii::t('label', 'Vector Store'),
+				'data' => 'max_tokens',
+				'title' => Yii::t('label', 'Max Tokens'),
+				'filter' => ['text'],
+			],
+			[
+				'data' => 'knowledge_bases',
+				'title' => Yii::t('label', 'Knowledge Bases'),
 				'filter' => ['text'],
 			],
 			[

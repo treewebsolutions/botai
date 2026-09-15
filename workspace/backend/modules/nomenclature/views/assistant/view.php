@@ -110,16 +110,23 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'OpenAI ID'),
+							'label' => Yii::t('label', 'Provider'),
 							'value' => function (Assistant $model) {
-								return $model->openai_id ?: '&mdash;';
+								return Assistant::getProviderTypeLabels()[$model->provider] ?? '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'GPT Model'),
+							'label' => Yii::t('label', 'Type'),
 							'value' => function (Assistant $model) {
-								return $model->gpt_model ?: '&mdash;';
+								return Assistant::getAssistantTypeLabels()[$model->type] ?? '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'Model'),
+							'value' => function (Assistant $model) {
+								return $model->model ?: '&mdash;';
 							},
 						],
 						[
@@ -138,9 +145,20 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'Vector Store'),
+							'label' => Yii::t('label', 'Max Tokens'),
 							'value' => function (Assistant $model) {
-								return $model->vectorStore->name ?: '&mdash;';
+								return $model->max_tokens ?: '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'Knowledge Bases'),
+							'value' => function (Assistant $model) {
+								$links = [];
+								foreach ($model->knowledgeBases as $knowledgeBase) {
+									$links[] = Html::a(Html::encode($knowledgeBase->name), ['knowledge-base/view', 'id' => $knowledgeBase->id]);
+								}
+								return $links ? implode(', ', $links) : '&mdash;';
 							},
 						],
 						[

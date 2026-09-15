@@ -217,7 +217,7 @@ class Notification extends CommonActiveRecord
 		}
 		$sessionDuration = 1 * 60;
 		if ((time() - Yii::$app->session->get('last_notified')) > $sessionDuration) {
-			Thread::prepareNotifications();
+			Conversation::prepareNotifications();
 			Yii::$app->session->set('last_notified', time());
 		}
 

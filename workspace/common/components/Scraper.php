@@ -3,6 +3,7 @@
 namespace common\components;
 
 use common\models\Page;
+use common\services\OpenAiRecordVectorStoreService;
 use yii\base\Component;
 use yii\httpclient\Client;
 use Yii;
@@ -98,8 +99,15 @@ class Scraper extends Component
 			]);
 		}
 
+		$page->characters = mb_strlen((string) $page->content);
+
 		// Save the page record in the database
-		$page->save();
+		if ($page->save()) {
+			// Keep the OpenAI vector store in sync: indexes the page when it is displayable (ACTIVE with
+			// content), withdraws it otherwise. No-op when no Knowledge Base is configured. Runs after
+			// the response (shutdown function) so scraping is never slowed down by the upload.
+			OpenAiRecordVectorStoreService::scheduleSync($page->id);
+		}
 	}
 
 	private function extractLinks($html, $website = null)

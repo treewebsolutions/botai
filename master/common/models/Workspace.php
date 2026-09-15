@@ -6,7 +6,7 @@ use Yii;
 use yii\behaviors\BlameableBehavior;
 use yii\behaviors\TimestampBehavior;
 use tws\helpers\DbHelper;
-use tws\helpers\FileHelper;
+use common\helpers\FileHelper;
 use yii\db\ActiveQuery;
 use yii\db\Query;
 use yii2tech\ar\softdelete\SoftDeleteBehavior;
@@ -18,6 +18,7 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  * @property int $subscription_id
  * @property string $code
  * @property string $url
+ * @property string|null $domain
  * @property int $type
  * @property int $created_by
  * @property int $updated_by
@@ -78,7 +79,7 @@ class Workspace extends CommonActiveRecord
 			[['subscription_id', 'type', 'created_by', 'updated_by', 'status', 'deleted'], 'integer'],
 			[['code', 'url', 'status'], 'required'],
 			[['created_at', 'updated_at'], 'safe'],
-			[['code', 'url'], 'string', 'max' => 255],
+			[['code', 'url', 'domain'], 'string', 'max' => 255],
 			[['subscription_id'], 'exist', 'skipOnError' => true, 'targetClass' => Subscription::class, 'targetAttribute' => ['subscription_id' => 'id']],
 		];
 	}
@@ -278,17 +279,116 @@ class Workspace extends CommonActiveRecord
 
 	//region Workspace Config
 	/**
-	 * Gets the Workspace directory path.
+	 * Gets the directory name used for this Workspace under `<root>/workspaces/`.
 	 *
-	 * @return bool|string
+	 * Tenants are keyed by their domain (`domain` column), falling back to the URL
+	 * slug (`url` column) when no domain is set. The `domain` column may hold a full
+	 * URL (e.g. `https://www.example.ro/`), so it is reduced to a bare lowercase host
+	 * name without the `www.` prefix (`example.ro`).
+	 *
+	 * @param string|null $domain overrides the model's domain (used when the model is being renamed)
+	 * @param string|null $url overrides the model's url (used when the model is being renamed)
+	 * @return string|null
+	 */
+	public function getDirectoryName($domain = null, $url = null)
+	{
+		$domain = trim((string) ($domain ?? $this->domain));
+		$url = trim((string) ($url ?? $this->url), "/ \t");
+
+		if ($domain !== '') {
+			$host = parse_url(strpos($domain, '://') === false ? "http://{$domain}" : $domain, PHP_URL_HOST);
+			$key = preg_replace('/^www\./i', '', $host ?: trim($domain, '/'));
+		} else {
+			$key = $url;
+		}
+
+		$key = strtolower(trim($key, "/ \t"));
+
+		return $key === '' ? null : $key;
+	}
+
+	/**
+	 * Gets the Workspace directory path (`<root>/workspaces/<domain>`).
+	 *
+	 * @return string|null
 	 */
 	public function getDirectoryPath()
 	{
-		if ($this->isNewRecord) {
+		if ($this->isNewRecord || ($name = $this->getDirectoryName()) === null) {
 			return null;
 		}
 
-		return Yii::getAlias("@workspace/workspaces/{$this->id}");
+		return Yii::getAlias("@base/workspaces/{$name}");
+	}
+
+	/**
+	 * Gets the workspace directory path relative to the web root (for .htaccess rules).
+	 *
+	 * @return string
+	 */
+	public function getRelativeDirectoryPath()
+	{
+		return 'workspaces/' . $this->getDirectoryName();
+	}
+
+	/**
+	 * Builds the map of shared @workspace directories that are linked into the tenant
+	 * directory (source => destination). Used both when installing (to create the
+	 * symbolic links) and when uninstalling (to remove them safely).
+	 *
+	 * Includes the shared source directories resolved at runtime via @app/... (modules,
+	 * views) and the static web assets served from the tenant document root.
+	 *
+	 * @return array
+	 */
+	public function getSymlinkMap(): array
+	{
+		$dirPath = $this->getDirectoryPath();
+		if (!$dirPath) {
+			return [];
+		}
+
+		$relativePaths = [
+			// Shared source directories referenced at runtime through @app/...
+			'frontend/modules',
+			'frontend/views',
+			'backend/modules',
+			'backend/views',
+			// Static web assets served directly from the tenant document root
+			'backend/web/assets',
+			'backend/web/audio',
+			'backend/web/img',
+			'backend/web/css',
+			'backend/web/js',
+			'backend/web/fonts',
+			'frontend/web/assets',
+			'frontend/web/img',
+			'frontend/web/css',
+			'frontend/web/fonts',
+			'frontend/web/js',
+		];
+
+		$map = [];
+		foreach ($relativePaths as $relativePath) {
+			$map[Yii::getAlias("@workspace/{$relativePath}")] = "{$dirPath}/{$relativePath}";
+		}
+
+		return $map;
+	}
+
+	/**
+	 * Gets the root .htaccess rewrite rule that routes `/<url>/...` to this Workspace directory.
+	 *
+	 * @param string|null $url overrides the model's url (used when the model is being renamed)
+	 * @param string|null $target overrides the relative directory path
+	 * @return string
+	 */
+	public function getHtaccessRewriteRule($url = null, $target = null)
+	{
+		$url = $url ?? $this->url;
+		$target = $target ?? $this->getRelativeDirectoryPath();
+
+		return "\tRewriteRule ^{$url}/?(.*)$ {$target}/$1 [NC,L]";
 	}
 
 	/**
@@ -356,54 +456,128 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Whether a usable cPanel component is configured. When it is not, provisioning
+	 * falls back to direct SQL (CREATE DATABASE / DROP DATABASE) and skips the crontab.
+	 *
+	 * Unlike the previous `YII_ENV_DEV && request IP === 127.0.0.1` check, this also
+	 * works from console/cron contexts where there is no HTTP request.
+	 *
+	 * @return bool
+	 */
+	public function isCPanelConfigured()
+	{
+		try {
+			return Yii::$app->get('cPanel') instanceof \tws\cpanel\CPanel;
+		} catch (\Throwable $e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Whether the Workspace is provisioned locally (Docker, Laragon, OrbStack...) rather
+	 * than through cPanel: either the application runs in the `dev` environment or no
+	 * cPanel component is configured. In this case the database is created/dropped
+	 * directly via PDO and no crontab entry is managed (see docker-compose `scheduler`).
+	 *
+	 * The `YII_ENV_DEV` check comes first so the cPanel component (which validates its
+	 * `baseUrl` on init) is never instantiated with the placeholder dev values.
+	 *
+	 * @return bool
+	 */
+	public function isLocalInstallEnvironment()
+	{
+		if (defined('YII_ENV_DEV') && YII_ENV_DEV) {
+			return true;
+		}
+
+		return !$this->isCPanelConfigured();
+	}
+
+	/**
 	 * Installs the Workspace database.
+	 *
+	 * Import order: the shared `@workspace/install/db/_01_structure.sql`, `_03_common.sql`,
+	 * `_04_translations.sql` and `_05_data.sql` (when present), then every
+	 * `@workspace/install/db/<type>/*.sql` (e.g. `_02_permissions.sql`) in name order.
 	 *
 	 * @return bool
 	 */
 	protected function installDatabase()
 	{
 		$db = static::getDb();
+		$dbName = $this->getWorkspaceDbName();
 
 		try {
 			// Create the database
-			if (YII_ENV_DEV && Yii::$app->request->getUserIP() === '127.0.0.1') {
-				$sql = [
-					"CREATE DATABASE IF NOT EXISTS {$this->getWorkspaceDbName()} CHARACTER SET utf8 COLLATE utf8_unicode_ci",
-					"GRANT ALL ON `{$this->getWorkspaceDbName()}`.* TO '{$db->username}'@'%' IDENTIFIED BY '{$db->password}'",
-					"FLUSH PRIVILEGES",
-				];
-				$db->createCommand(implode(";\n", $sql))->execute();
+			if ($this->isLocalInstallEnvironment()) {
+				$db->createCommand("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8 COLLATE utf8_unicode_ci")->execute();
+				// Best effort: the master user usually owns the server locally (root), and
+				// MySQL 8 rejects the legacy `GRANT ... IDENTIFIED BY` form, so a refused
+				// grant must not abort the install. A truly unusable database fails loudly
+				// at the connection check below anyway.
+				try {
+					$db->createCommand("GRANT ALL ON `{$dbName}`.* TO '{$db->username}'@'%'")->execute();
+					$db->createCommand('FLUSH PRIVILEGES')->execute();
+				} catch (\Exception $e) {
+					Yii::warning([
+						'message' => 'Cannot grant privileges on the workspace database (ignored).',
+						'workspace' => $this->code,
+						'error' => $e->getMessage(),
+					], __METHOD__);
+				}
 			} else {
 				// Create the database using the cPanel API
-				Yii::$app->cPanel->uapi->Mysql->create_database(['name' => $this->getWorkspaceDbName()]);
+				Yii::$app->cPanel->uapi->Mysql->create_database(['name' => $dbName]);
 				Yii::$app->cPanel->uapi->Mysql->set_privileges_on_database([
 					'user' => $db->username,
-					'database' => $this->getWorkspaceDbName(),
+					'database' => $dbName,
 					'privileges' => 'ALL PRIVILEGES',
 				]);
 			}
 
-			// Get the database instance
+			// Get the database instance and fail here, with the cause, rather than midway
+			// through the first import.
 			$workspaceDb = $this->getWorkspaceDb();
-			$workspaceDbPath = Yii::getAlias("@workspace/install/db/{$this->type}");
+			try {
+				$workspaceDb->open();
+			} catch (\Exception $e) {
+				throw new \Exception(sprintf(
+					'The workspace database %s is not reachable with the master credentials (%s): %s',
+					$dbName,
+					$db->username,
+					$e->getMessage()
+				), 0, $e);
+			}
 
-			// Import the database structure and data
-			$workspaceDb->createCommand()->setRawSql(file_get_contents("{$workspaceDbPath}/_01_structure.sql"))->execute();
-			$workspaceDb->createCommand()->setRawSql(file_get_contents("{$workspaceDbPath}/_02_permissions.sql"))->execute();
-			$workspaceDb->createCommand()->setRawSql(file_get_contents("{$workspaceDbPath}/_03_common.sql"))->execute();
-			$workspaceDb->createCommand()->setRawSql(file_get_contents("{$workspaceDbPath}/_04_translations.sql"))->execute();
-			$workspaceDb->createCommand()->setRawSql(file_get_contents("{$workspaceDbPath}/_05_data.sql"))->execute();
+			$workspaceDbPath = Yii::getAlias('@workspace/install/db');
 
-			// Create the super admin user
-			$user = $this->subscription->subscriber->user;
-			$user->parent_id = null;
+			// Import the shared database structure and data. `_05_data.sql` is git-ignored
+			// (may contain credentials), so a missing file is skipped rather than fatal.
+			foreach (['_01_structure.sql', '_03_common.sql', '_04_translations.sql', '_05_data.sql'] as $fileName) {
+				$this->importSqlFile($workspaceDb, "{$workspaceDbPath}/{$fileName}", $fileName === '_05_data.sql');
+			}
 
-			$workspaceDb->createCommand()->insert('{{%user}}', $user->attributes)->execute();
-			$workspaceDb->createCommand()->insert('{{%auth_assignment}}', [
-				'item_name' => 'superAdmin',
-				'user_id' => $user->id,
-				'created_at' => time(),
-			])->execute();
+			// Type-specific seeds (install/db/<type>/*.sql, e.g. _02_permissions.sql), imported
+			// after the shared data so they can reference the seeded rows.
+			$typeSqlFiles = glob("{$workspaceDbPath}/{$this->type}/*.sql") ?: [];
+			sort($typeSqlFiles, SORT_STRING);
+			foreach ($typeSqlFiles as $typeSqlFile) {
+				$this->importSqlFile($workspaceDb, $typeSqlFile);
+			}
+
+			// Create the super admin user by copying the subscriber's master account into
+			// the tenant (same id and password hash, so the credentials match).
+			if ($user = $this->subscription->subscriber->user ?? null) {
+				$attributes = $user->attributes;
+				$attributes['parent_id'] = null;
+
+				$workspaceDb->createCommand()->insert('{{%user}}', $attributes)->execute();
+				$workspaceDb->createCommand()->insert('{{%auth_assignment}}', [
+					'item_name' => 'superAdmin',
+					'user_id' => $user->id,
+					'created_at' => time(),
+				])->execute();
+			}
 
 			// Create related records, if any
 //			if ($rows = WsTemplate::findAllForImport()) {
@@ -415,12 +589,83 @@ class Workspace extends CommonActiveRecord
 
 			return true;
 		} catch (\Exception $e) {
+			Yii::error(['message' => $e->getMessage(), 'workspace' => $this->code, 'exception' => (string) $e], __METHOD__);
+			$this->addError('', $e->getMessage());
 			return false;
 		}
 	}
 
 	/**
+	 * Imports a multi-statement SQL file into the given connection, failing on ANY
+	 * broken statement.
+	 *
+	 * PDO only throws for the first statement of a multi-statement string; when a
+	 * later statement fails, execution stops there and the rest of the file is
+	 * silently skipped, leaving a half-imported schema behind. Draining every
+	 * result set via nextRowset() surfaces the real error.
+	 *
+	 * @param \yii\db\Connection $db
+	 * @param string $filePath
+	 * @param bool $optional when true a missing file is skipped instead of failing
+	 * @throws \Exception when the file cannot be read or any statement fails
+	 */
+	protected function importSqlFile($db, string $filePath, bool $optional = false): void
+	{
+		if ($optional && !is_file($filePath)) {
+			return;
+		}
+
+		$sql = is_file($filePath) ? file_get_contents($filePath) : false;
+		if ($sql === false) {
+			throw new \Exception("Cannot read the SQL file: {$filePath}");
+		}
+		if (trim($sql) === '') {
+			return;
+		}
+
+		$db->open();
+		$statement = $db->pdo->prepare($sql);
+		$statement->execute();
+
+		try {
+			while ($statement->nextRowset()) {
+				// advance through every statement's result set
+			}
+		} catch (\PDOException $e) {
+			throw new \Exception('SQL import failed in ' . basename($filePath) . ': ' . $e->getMessage(), 0, $e);
+		}
+
+		// Some driver versions report the failed statement via errorInfo() instead
+		// of throwing from nextRowset().
+		$error = $statement->errorInfo();
+		if (!in_array($error[0] ?? '00000', ['00000', null], true)) {
+			throw new \Exception('SQL import failed in ' . basename($filePath) . ': ' . ($error[2] ?? $error[0]));
+		}
+	}
+
+	/**
+	 * Gets the tenant configuration files that carry install-time placeholders / baseUrls.
+	 *
+	 * @return array
+	 */
+	protected function getConfigFilePaths()
+	{
+		$dirPath = $this->getDirectoryPath();
+
+		return [
+			"{$dirPath}/common/config/main.php",
+			"{$dirPath}/backend/config/main.php",
+			"{$dirPath}/frontend/config/main.php",
+			"{$dirPath}/console/config/main.php",
+		];
+	}
+
+	/**
 	 * Installs the Workspace directory.
+	 *
+	 * Copies the shared skeleton (`@workspace/install/dir`, minus the per-type overlay
+	 * directories), overlays `@workspace/install/dir/<type>` on top, links the shared
+	 * @workspace source/asset directories into the tenant and fills in the config placeholders.
 	 *
 	 * @return bool
 	 */
@@ -430,41 +675,40 @@ class Workspace extends CommonActiveRecord
 		$dirPath = $this->getDirectoryPath();
 
 		try {
-			FileHelper::createDirectory($dirPath, 0755);
-			FileHelper::copyDirectory(Yii::getAlias("@workspace/install/dir/{$this->type}"), $dirPath, ['dirMode' => 0755]);
+			if (!$dirPath) {
+				throw new \Exception('The workspace has no domain/url to derive its directory from.');
+			}
 
-			// Create symbolic links for static assets
-			FileHelper::symlink([
-				Yii::getAlias("@workspace/backend/web/assets") => "{$dirPath}/backend/web/assets",
-				Yii::getAlias("@workspace/backend/web/audio") => "{$dirPath}/backend/web/audio",
-				Yii::getAlias("@workspace/backend/web/img") => "{$dirPath}/backend/web/img",
-				Yii::getAlias("@workspace/backend/web/img/flags") => "{$dirPath}/backend/web/img/flags",
-				Yii::getAlias("@workspace/backend/web/img/ico") => "{$dirPath}/backend/web/img/ico",
-				Yii::getAlias("@workspace/backend/web/img/tpl") => "{$dirPath}/backend/web/img/tpl",
-				Yii::getAlias("@workspace/backend/web/css") => "{$dirPath}/backend/web/css",
-				Yii::getAlias("@workspace/backend/web/js") => "{$dirPath}/backend/web/js",
-				Yii::getAlias("@workspace/frontend/web/assets") => "{$dirPath}/frontend/web/assets",
-				Yii::getAlias("@workspace/frontend/web/img") => "{$dirPath}/frontend/web/img",
-				Yii::getAlias("@workspace/frontend/web/img/flags") => "{$dirPath}/frontend/web/img/flags",
-				Yii::getAlias("@workspace/frontend/web/img/ico") => "{$dirPath}/frontend/web/img/ico",
-				Yii::getAlias("@workspace/frontend/web/img/mail") => "{$dirPath}/frontend/web/img/mail",
-				Yii::getAlias("@workspace/frontend/web/css") => "{$dirPath}/frontend/web/css",
-				Yii::getAlias("@workspace/frontend/web/fonts") => "{$dirPath}/frontend/web/fonts",
-				Yii::getAlias("@workspace/frontend/web/plugins") => "{$dirPath}/frontend/web/plugins",
-				Yii::getAlias("@workspace/frontend/web/js") => "{$dirPath}/frontend/web/js",
+			FileHelper::createDirectory($dirPath, 0755);
+
+			// The type overlays (install/dir/<type>/) are not part of the shared skeleton:
+			// exclude every known type directory from the base copy. The pattern is
+			// deliberately unanchored ("1/", not "/1/"): matchPathname does not match
+			// anchored directory patterns at the copy root.
+			$typeExcludes = array_map(function ($type) {
+				return "{$type}/";
+			}, array_keys(static::getTypeLabels()));
+			FileHelper::copyDirectory(Yii::getAlias('@workspace/install/dir'), $dirPath, [
+				'dirMode' => 0755,
+				'except' => $typeExcludes,
 			]);
 
+			// Type-specific directory overlay (install/dir/<type>/), the filesystem
+			// counterpart of the install/db/<type>/ seeds: whatever it contains is copied
+			// over the skeleton just laid down (e.g. seed uploads).
+			$typeDirPath = Yii::getAlias("@workspace/install/dir/{$this->type}");
+			if (is_dir($typeDirPath)) {
+				FileHelper::copyDirectory($typeDirPath, $dirPath, ['dirMode' => 0755]);
+			}
+
+			// Link the shared source/asset directories from the @workspace app into the tenant.
+			FileHelper::symlink($this->getSymlinkMap());
+
 			// Update the configuration files
-			$filePaths = [
-				"{$dirPath}/common/config/main.php",
-				"{$dirPath}/api/config/main.php",
-				"{$dirPath}/backend/config/main.php",
-				"{$dirPath}/frontend/config/main.php",
-				"{$dirPath}/console/config/main.php",
-			];
-			foreach ($filePaths as $filePath) {
+			foreach ($this->getConfigFilePaths() as $filePath) {
 				if (is_file($filePath)) {
 					file_put_contents($filePath, strtr(file_get_contents($filePath), [
+						'{{DB_HOST}}' => DbHelper::getDsnAttribute('host', $db) ?: 'localhost',
 						'{{DB_NAME}}' => $this->getWorkspaceDbName(),
 						'{{DB_USERNAME}}' => $db->username,
 						'{{DB_PASSWORD}}' => $db->password,
@@ -477,19 +721,22 @@ class Workspace extends CommonActiveRecord
 
 			return true;
 		} catch (\Exception $e) {
+			Yii::error(['message' => $e->getMessage(), 'workspace' => $this->code, 'exception' => (string) $e], __METHOD__);
+			$this->addError('', $e->getMessage());
 			return false;
 		}
 	}
 
 	/**
-	 * Updates the crontab file.
+	 * Updates the crontab file (cPanel only; locally the docker `scheduler` service
+	 * runs `yii schedule/run` for every tenant under <root>/workspaces/).
 	 *
 	 * @param bool $remove
 	 * @return bool
 	 */
 	protected function updateCrontab($remove = false)
 	{
-		if (YII_ENV_DEV && Yii::$app->request->getUserIP() === '127.0.0.1') {
+		if ($this->isLocalInstallEnvironment()) {
 			return true;
 		}
 
@@ -499,7 +746,7 @@ class Workspace extends CommonActiveRecord
 			'day' => '*',
 			'month' => '*',
 			'weekday' => '*',
-			'command' => "/usr/local/bin/php " . Yii::getAlias("@workspace/workspaces/{$this->id}/yii") . " schedule/run >/dev/null 2>&1",
+			'command' => "/usr/local/bin/php " . $this->getDirectoryPath() . "/yii schedule/run >/dev/null 2>&1",
 		];
 
 		if ($remove === false) {
@@ -528,31 +775,66 @@ class Workspace extends CommonActiveRecord
 	protected function updateHtaccess($remove = false)
 	{
 		$htaccess = \tws\textfile\TextFile::load(Yii::getAlias('@base/.htaccess'));
-		$line = "\tRewriteRule ^{$this->url}/?(.*)$ workspace/workspaces/{$this->id}/$1 [NC,L]";
-		$workspace = Workspace::findOne([
-			'LIKE', 'url', $this->url
-		]);
+		$target = $this->getRelativeDirectoryPath();
+		$line = $this->getHtaccessRewriteRule(null, $target);
 
 		if ($remove === true) {
 			return $htaccess->deleteLine($line);
 		}
 
-		// Delete similar rewrite rules with the same workspace ID
-		if ($workspaceLines = $htaccess->getLines("workspace/workspaces/{$this->id}/$1")) {
+		// Delete similar rewrite rules with the same workspace directory
+		if ($workspaceLines = $htaccess->getLines("{$target}/$1")) {
 			$htaccess->deleteLines($workspaceLines);
 		}
 
-		if ($workspace->url) {
-			return $htaccess
-				->addLine($line)
-				->beforeLine('# END Workspace Rules')
-				->save();
-		} else {
-			return $htaccess
-				->addLine($line)
-				->afterLine('# BEGIN Workspace Rules')
-				->save();
+		// The rule goes at the top of the Workspace Rules block (newest tenant first).
+		return $htaccess
+			->addLine($line)
+			->afterLine('# BEGIN Workspace Rules')
+			->save();
+	}
+
+	/**
+	 * Applies a URL slug change to an installed Workspace: rewrites the root .htaccess
+	 * rule and the baseUrl entries of the tenant config files. When the directory is
+	 * keyed by the URL (no domain set) the tenant directory is renamed as well.
+	 *
+	 * @param string $previousUrl the URL slug before the change
+	 * @return bool
+	 */
+	public function saveUrl($previousUrl)
+	{
+		$dirPath = $this->getDirectoryPath();
+		$previousDirName = $this->getDirectoryName(null, $previousUrl);
+		$previousDirPath = $previousDirName === null ? null : Yii::getAlias("@base/workspaces/{$previousDirName}");
+
+		if ($dirPath && $previousDirPath && $previousDirPath !== $dirPath) {
+			// The directory key changed: move the tenant and drop its old rewrite rule
+			// (updateHtaccess() only cleans up rules pointing at the new directory).
+			if (is_dir($previousDirPath) && !file_exists($dirPath)) {
+				rename($previousDirPath, $dirPath);
+			}
+			\tws\textfile\TextFile::load(Yii::getAlias('@base/.htaccess'))
+				->deleteLine($this->getHtaccessRewriteRule($previousUrl, "workspaces/{$previousDirName}"));
 		}
+
+		$this->updateHtaccess();
+
+		if ($previousUrl === $this->url) {
+			return true;
+		}
+
+		// Update the configuration files
+		foreach ($this->getConfigFilePaths() as $filePath) {
+			if (is_file($filePath)) {
+				file_put_contents($filePath, strtr(file_get_contents($filePath), [
+					"'baseUrl' => '/{$previousUrl}'" => "'baseUrl' => '/{$this->url}'",
+					"'baseUrl' => '/{$previousUrl}/admin'" => "'baseUrl' => '/{$this->url}/admin'",
+				]));
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -582,6 +864,7 @@ class Workspace extends CommonActiveRecord
 			}
 			return true;
 		} catch (\Exception $e) {
+			Yii::error(['message' => $e->getMessage(), 'workspace' => $this->code, 'modelErrors' => $this->errors, 'exception' => (string) $e], __METHOD__);
 			$this->addError('', $e->getMessage());
 			return false;
 		}
@@ -595,8 +878,8 @@ class Workspace extends CommonActiveRecord
 	public function uninstall()
 	{
 		try {
-			if (YII_ENV_DEV && Yii::$app->request->getUserIP() === '127.0.0.1') {
-				static::getDb()->createCommand("DROP DATABASE IF EXISTS {$this->getWorkspaceDbName()}")->execute();
+			if ($this->isLocalInstallEnvironment()) {
+				static::getDb()->createCommand("DROP DATABASE IF EXISTS `{$this->getWorkspaceDbName()}`")->execute();
 			} else {
 				Yii::$app->cPanel->uapi->Mysql->delete_database(['name' => $this->getWorkspaceDbName()]);
 			}
@@ -607,9 +890,25 @@ class Workspace extends CommonActiveRecord
 			if (!$this->updateHtaccess(true)) {
 				throw new \Exception('Cannot update the .htaccess file.');
 			}
-			FileHelper::removeDirectory($this->getDirectoryPath());
+
+			// Remove the directory links first so the recursive delete below never
+			// traverses into the shared @workspace sources. On Windows PHP is_link()
+			// does not detect junctions, so FileHelper::removeDirectory() would otherwise
+			// follow them; rmdir() removes the junction itself without touching the target.
+			foreach (array_values($this->getSymlinkMap()) as $linkPath) {
+				if (is_link($linkPath)) {
+					@unlink($linkPath);
+				} elseif (is_dir($linkPath)) {
+					@rmdir($linkPath);
+				}
+			}
+
+			if ($dirPath = $this->getDirectoryPath()) {
+				FileHelper::removeDirectory($dirPath);
+			}
 			return true;
 		} catch (\Exception $e) {
+			Yii::error(['message' => $e->getMessage(), 'workspace' => $this->code, 'exception' => (string) $e], __METHOD__);
 			$this->addError('', $e->getMessage());
 			return false;
 		}

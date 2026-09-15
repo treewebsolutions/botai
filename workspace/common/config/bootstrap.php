@@ -11,6 +11,6 @@ Yii::setAlias('@console', dirname(__DIR__, 2) . '/console');
 Yii::setAlias('@uploads', dirname(__DIR__, 2) . '/uploads');
 Yii::setAlias('@backups', dirname(__DIR__, 2) . '/_backups');
 Yii::setAlias('@downloads', dirname(__DIR__, 2) . '/_downloads');
-Yii::setAlias('@workspaces', dirname(__DIR__, 2) . '/workspaces');
+Yii::setAlias('@workspaces', dirname(__DIR__, 3) . '/workspaces');
 
 Yii::setAlias('@master', dirname(__DIR__, 3)  . '/master');

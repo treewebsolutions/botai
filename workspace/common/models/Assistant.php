@@ -11,14 +11,19 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
 /**
  * This is the model class for table "{{%assistant}}".
  *
+ * An assistant is a backend-configurable chat profile (model, instructions, sampling) that
+ * searches the vector stores of its linked {@see KnowledgeBase} rows through the OpenAI
+ * Responses API `file_search` tool. Nothing is created on the OpenAI side for an assistant.
+ *
  * @property int $id
- * @property int $vector_store_id
- * @property string $openai_id
  * @property string $name
- * @property string $gpt_model
+ * @property string $model
  * @property string $instructions
  * @property string $temperature
  * @property string $top_p
+ * @property int $max_tokens
+ * @property int $provider
+ * @property int $type
  * @property int $default
  * @property int $created_by
  * @property int $updated_by
@@ -27,20 +32,27 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  * @property int $status
  * @property int $deleted
  *
- * @property VectorStore $vectorStore
+ * @property AssistantKnowledgeBase[] $assistantKnowledgeBases
+ * @property KnowledgeBase[] $knowledgeBases
  * @property Message[] $messages
  * @property User $creator
  * @property User $updater
  */
 class Assistant extends CommonActiveRecord
 {
-    /**
-     * {@inheritdoc}
-     */
-    public static function tableName()
-    {
-        return '{{%assistant}}';
-    }
+	/** Provider values mirror {@see Integration::TYPE_OPENAI}. */
+	const PROVIDER_OPENAI = 1;
+	const PROVIDER_CLAUDE = 2;
+
+	const TYPE_CHAT = 1;
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public static function tableName()
+	{
+		return '{{%assistant}}';
+	}
 
 	/**
 	 * @inheritdoc
@@ -58,6 +70,7 @@ class Assistant extends CommonActiveRecord
 			'DefaultBehavior' => [
 				'class' => DefaultBehavior::class,
 				'ensureDefaultValue' => true,
+				'groupAttributes' => ['type'],
 			],
 			'SoftDeleteBehavior' => [
 				'class' => SoftDeleteBehavior::class,
@@ -68,53 +81,63 @@ class Assistant extends CommonActiveRecord
 		];
 	}
 
-    /**
-     * {@inheritdoc}
-     */
-    public function rules()
-    {
-        return [
-            [['vector_store_id', 'default', 'created_by', 'updated_by', 'status', 'deleted'], 'integer'],
-            [['name', 'status'], 'required'],
-            [['instructions'], 'string'],
-            [['temperature', 'top_p'], 'number'],
-            [['created_at', 'updated_at'], 'safe'],
-            [['openai_id', 'name', 'gpt_model'], 'string', 'max' => 255],
-            [['vector_store_id'], 'exist', 'skipOnError' => true, 'targetClass' => VectorStore::class, 'targetAttribute' => ['vector_store_id' => 'id']],
-        ];
-    }
+	/**
+	 * {@inheritdoc}
+	 */
+	public function rules()
+	{
+		return [
+			[['default', 'created_by', 'updated_by', 'status', 'deleted', 'max_tokens', 'provider', 'type'], 'integer'],
+			[['max_tokens'], 'integer', 'min' => 1, 'max' => 8192],
+			[['name', 'status', 'provider', 'type'], 'required'],
+			[['instructions'], 'string'],
+			[['temperature', 'top_p'], 'number'],
+			[['created_at', 'updated_at'], 'safe'],
+			[['name', 'model'], 'string', 'max' => 255],
+		];
+	}
 
-    /**
-     * {@inheritdoc}
-     */
-    public function attributeLabels()
-    {
-        return [
-            'id' => Yii::t('label', 'ID'),
-            'vector_store_id' => Yii::t('label', 'Vector Store ID'),
-            'openai_id' => Yii::t('label', 'OpenAI ID'),
-            'name' => Yii::t('label', 'Name'),
-            'gpt_model' => Yii::t('label', 'GPT Model'),
-            'instructions' => Yii::t('label', 'Instructions'),
-            'temperature' => Yii::t('label', 'Temperature'),
-            'top_p' => Yii::t('label', 'Top P'),
-	        'default' => Yii::t('label', 'Default'),
-            'created_by' => Yii::t('label', 'Created By'),
-            'updated_by' => Yii::t('label', 'Updated By'),
-            'created_at' => Yii::t('label', 'Created At'),
-            'updated_at' => Yii::t('label', 'Updated At'),
-            'status' => Yii::t('label', 'Status'),
-            'deleted' => Yii::t('label', 'Deleted'),
-        ];
-    }
+	/**
+	 * {@inheritdoc}
+	 */
+	public function attributeLabels()
+	{
+		return [
+			'id' => Yii::t('label', 'ID'),
+			'name' => Yii::t('label', 'Name'),
+			'model' => Yii::t('label', 'Model'),
+			'instructions' => Yii::t('label', 'Instructions'),
+			'temperature' => Yii::t('label', 'Temperature'),
+			'top_p' => Yii::t('label', 'Top P'),
+			'max_tokens' => Yii::t('label', 'Max Tokens'),
+			'provider' => Yii::t('label', 'Provider'),
+			'type' => Yii::t('label', 'Type'),
+			'default' => Yii::t('label', 'Default'),
+			'created_by' => Yii::t('label', 'Created By'),
+			'updated_by' => Yii::t('label', 'Updated By'),
+			'created_at' => Yii::t('label', 'Created At'),
+			'updated_at' => Yii::t('label', 'Updated At'),
+			'status' => Yii::t('label', 'Status'),
+			'deleted' => Yii::t('label', 'Deleted'),
+		];
+	}
 
-    /**
-     * @return \yii\db\ActiveQuery
-     */
-    public function getVectorStore()
-    {
-        return $this->hasOne(VectorStore::class, ['id' => 'vector_store_id']);
-    }
+	/**
+	 * @return \yii\db\ActiveQuery
+	 */
+	public function getAssistantKnowledgeBases()
+	{
+		return $this->hasMany(AssistantKnowledgeBase::class, ['assistant_id' => 'id']);
+	}
+
+	/**
+	 * @return \yii\db\ActiveQuery
+	 */
+	public function getKnowledgeBases()
+	{
+		return $this->hasMany(KnowledgeBase::class, ['id' => 'knowledge_base_id'])
+			->via('assistantKnowledgeBases');
+	}
 
 	/**
 	 * @return \yii\db\ActiveQuery
@@ -141,294 +164,128 @@ class Assistant extends CommonActiveRecord
 	}
 
 	/**
-	 * Model type labels.
+	 * Whether this assistant should use the Responses API with file_search.
+	 * Enabled when provider is OpenAI and at least one KB has a vector_store_id.
+	 *
+	 * @return bool
+	 */
+	public function useResponsesApi(): bool
+	{
+		if ((int) $this->provider !== self::PROVIDER_OPENAI) {
+			return false;
+		}
+		return $this->collectVectorStoreIds() !== [];
+	}
+
+	/**
+	 * Vector store IDs of all knowledge bases linked to this assistant (deduplicated, in link order).
+	 *
+	 * @return string[]
+	 */
+	public function collectVectorStoreIds(): array
+	{
+		$ids = [];
+		foreach ($this->knowledgeBases as $kb) {
+			if ((int) $kb->status !== KnowledgeBase::STATUS_ACTIVE || (int) $kb->deleted !== KnowledgeBase::NO) {
+				continue;
+			}
+			if (!empty($kb->vector_store_id)) {
+				$ids[] = (string) $kb->vector_store_id;
+			}
+		}
+		return array_values(array_unique($ids));
+	}
+
+	/**
+	 * Resolves the Assistant that drives the embed chat.
+	 *
+	 * Order: the `chatAssistantId` param (optional PK override) when it points to an active
+	 * assistant, otherwise the default active chat Assistant from DB. Returns null when
+	 * neither exists — callers fall back to params-based config.
+	 *
+	 * @return static|null
+	 */
+	public static function findChatAssistant(): ?self
+	{
+		$id = (int) (Yii::$app->params['chatAssistantId'] ?? 0);
+		if ($id > 0) {
+			$assistant = static::find()
+				->where(['id' => $id, 'status' => static::STATUS_ACTIVE, 'deleted' => static::NO])
+				->with('knowledgeBases')
+				->one();
+			if ($assistant !== null) {
+				return $assistant;
+			}
+		}
+		return static::find()
+			->where([
+				'type' => static::TYPE_CHAT,
+				'default' => static::YES,
+				'status' => static::STATUS_ACTIVE,
+				'deleted' => static::NO,
+			])
+			->with('knowledgeBases')
+			->orderBy(['id' => SORT_ASC])
+			->one();
+	}
+
+	/**
+	 * Provider type labels (OpenAI, Claude, etc.)
 	 *
 	 * @return array
 	 */
-	public static function getGPTModels()
+	public static function getProviderTypeLabels()
 	{
 		return [
-			'gpt-4o' => 'gpt-4o - ' . Yii::t('backend', 'Fastest and most advanced model, supports text and image input'),
-			'gpt-4o-mini' => 'gpt-4o-mini – ' . Yii::t('backend', 'Lightweight and efficient, optimized for quick tasks'),
-			'gpt-4-turbo' => 'gpt-4-turbo – ' . Yii::t('backend', 'Optimized for speed and cost, high-performance GPT-4 variant'),
-			'gpt-4' => 'gpt-4 – ' . Yii::t('backend', 'High reasoning capabilities, supports complex tasks'),
-			'gpt-3.5-turbo' => 'gpt-3.5-turbo - ' . Yii::t('backend', 'Cost-effective and efficient, great for chat applications'),
+			static::PROVIDER_OPENAI => Yii::t('label', 'OpenAI'),
+			static::PROVIDER_CLAUDE => Yii::t('label', 'Claude (Anthropic)'),
 		];
 	}
 
-	//region OpenAI CRUD
 	/**
-	 * Create record in OpenAI
+	 * Assistant type labels.
 	 *
-	 * @return string|null
+	 * @return array
 	 */
-	public function createInOpenAI()
+	public static function getAssistantTypeLabels()
 	{
-		try {
-			$integration = Integration::find()
-				->where([
-					'status' => Integration::STATUS_ACTIVE,
-					'deleted' => Integration::NO,
-					'type' => Integration::TYPE_OPENAI,
-					'default' => Integration::YES,
-				])
-				->one();
-			$apiKey = $integration->data;
-			if (!$apiKey) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API key is missing.'));
-			}
-
-			$endpoint = 'https://api.openai.com/v1/assistants';
-
-			$vectorStore = VectorStore::findOne($this->vector_store_id);
-
-			$data = [
-				'name' => $this->name,
-				'instructions' => $this->instructions,
-				'model' => $this->gpt_model,
-				'top_p' => (float)$this->top_p ?? 1.0,
-				'temperature' => (float)$this->temperature ?? 1.0,
-				'tools' => [
-					[
-						'type' => 'code_interpreter',  // Tool for running Python code and data analysis
-					],
-					[
-						'type' => 'file_search',       // Tool for searching within files
-					],
-				],
-				'tool_resources' => [
-					'file_search' => [
-						'vector_store_ids' => [
-							$vectorStore->openai_id
-						]
-					],
-				],
-			];
-
-			$ch = curl_init($endpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . 'Bearer ' . $apiKey,
-				'Content-Type: application/json',
-				'OpenAI-Beta: assistants=v2',
-			]);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-
-			$response = curl_exec($ch);
-			$error = curl_error($ch);
-			curl_close($ch);
-
-			if ($error) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Error') . ': ' . $error);
-			}
-
-			$decodedResponse = json_decode($response, true);
-
-			if (isset($decodedResponse['error'])) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Response Error') . ': ' . json_encode($decodedResponse));
-			}
-
-			if (!isset($decodedResponse['id'])) {
-				throw new \Exception(Yii::t('backend', 'Invalid OpenAI API response') . ': ' . json_encode($decodedResponse));
-			}
-
-			return $decodedResponse;
-		} catch (\Exception $e) {
-			$this->addError('', $this->getCustomErrorMessage($e));
-			return false;
-		}
+		return [
+			static::TYPE_CHAT => Yii::t('label', 'Chat'),
+		];
 	}
 
 	/**
-	 * Retrieves record from OpenAI
+	 * Get available models for a specific provider or all models
 	 *
-	 * @param string $openaiId
-	 * @return mixed
+	 * @param int|null $provider Provider type (PROVIDER_OPENAI, PROVIDER_CLAUDE, or null for all)
+	 * @return array
 	 */
-	public function readFromOpenAI($openaiId)
+	public static function getGPTModels($provider = null)
 	{
-		try {
-			$integration = Integration::find()
-				->where([
-					'status' => Integration::STATUS_ACTIVE,
-					'deleted' => Integration::NO,
-					'type' => Integration::TYPE_OPENAI,
-					'default' => Integration::YES,
-				])
-				->one();
-			$apiKey = $integration->data;
-			if (!$apiKey) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API key is missing.'));
-			}
+		$openaiModels = [
+			'gpt-5.5' => Yii::t('backend', 'GPT-5.5 – Flagship model for complex reasoning and coding'),
+			'gpt-5.5-pro' => Yii::t('backend', 'GPT-5.5 Pro – Highest accuracy for high-stakes work'),
+			'gpt-5.4' => Yii::t('backend', 'GPT-5.4 – Affordable general-purpose model'),
+			'gpt-5.4-mini' => Yii::t('backend', 'GPT-5.4 Mini – Fast, cost-efficient model for everyday tasks'),
+			// Legacy models kept for existing assistants.
+			'gpt-4o' => Yii::t('backend', 'GPT-4o – Multimodal model for text and vision (legacy)'),
+			'gpt-4.1' => Yii::t('backend', 'GPT-4.1 – General-purpose text model (legacy)'),
+			'gpt-4o-mini' => Yii::t('backend', 'GPT-4o Mini – Cost-efficient model for everyday tasks (legacy)'),
+		];
+		$claudeModels = [
+			'claude-fable-5' => Yii::t('backend', 'Claude Fable 5 – Most capable model for demanding reasoning and agentic work'),
+			'claude-opus-4-8' => Yii::t('backend', 'Claude Opus 4.8 – Frontier model for complex reasoning and coding'),
+			'claude-sonnet-4-6' => Yii::t('backend', 'Claude Sonnet 4.6 – Balanced speed and intelligence'),
+			'claude-haiku-4-5' => Yii::t('backend', 'Claude Haiku 4.5 – Fast and lightweight model'),
+		];
+		$provider = $provider !== null ? (int) $provider : null;
 
-			$endpoint = 'https://api.openai.com/v1/assistants/' . $openaiId;
-
-			$ch = curl_init($endpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . 'Bearer ' . $apiKey,
-				'Content-Type: application/json',
-				'OpenAI-Beta: assistants=v2',
-			]);
-			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-
-			$response = curl_exec($ch);
-			$error = curl_error($ch);
-			curl_close($ch);
-
-			if ($error) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Error') . ': ' . $error);
-			}
-
-			$decodedResponse = json_decode($response, true);
-			if (isset($decodedResponse['error'])) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Response Error') . ': ' . json_encode($decodedResponse));
-			}
-
-			return $decodedResponse;
-		} catch (\Exception $e) {
-			$this->addError('', $this->getCustomErrorMessage($e));
-			return false;
+		if ($provider === static::PROVIDER_OPENAI) {
+			return $openaiModels;
 		}
-	}
-
-	/**
-	 * Update record in OpenAI
-	 *
-	 * @param string $openaiId
-	 * @return mixed
-	 */
-	public function updateInOpenAI($openaiId)
-	{
-		try {
-			$integration = Integration::find()
-				->where([
-					'status' => Integration::STATUS_ACTIVE,
-					'deleted' => Integration::NO,
-					'type' => Integration::TYPE_OPENAI,
-					'default' => Integration::YES,
-				])
-				->one();
-			$apiKey = $integration->data;
-			if (!$apiKey) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API key is missing.'));
-			}
-
-			$endpoint = 'https://api.openai.com/v1/assistants/' . $openaiId;
-
-			$vectorStore = VectorStore::findOne($this->vector_store_id);
-
-			$data = [
-				'name' => $this->name,
-				'instructions' => $this->instructions,
-				'model' => $this->gpt_model,
-				'top_p' => (float)$this->top_p ?? 1.0,
-				'temperature' => (float)$this->temperature ?? 1.0,
-				'tools' => [
-					[
-						'type' => 'code_interpreter',  // Tool for running Python code and data analysis
-					],
-					[
-						'type' => 'file_search',       // Tool for searching within files
-					],
-				],
-				'tool_resources' => [
-					'file_search' => [
-						'vector_store_ids' => [
-							$vectorStore->openai_id
-						]
-					],
-				],
-			];
-
-			$ch = curl_init($endpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . 'Bearer ' . $apiKey,
-				'Content-Type: application/json',
-				'OpenAI-Beta: assistants=v2',
-			]);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-
-			$response = curl_exec($ch);
-			$error = curl_error($ch);
-			curl_close($ch);
-
-			if ($error) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Error') . ': ' . $error);
-			}
-
-			$decodedResponse = json_decode($response, true);
-
-			if (isset($decodedResponse['error'])) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Response Error') . ': ' . json_encode($decodedResponse));
-			}
-
-			if (!isset($decodedResponse['id'])) {
-				throw new \Exception(Yii::t('backend', 'Invalid OpenAI API response') . ': ' . json_encode($decodedResponse));
-			}
-
-			return $decodedResponse;
-		} catch (\Exception $e) {
-			$this->addError('', $this->getCustomErrorMessage($e));
-			return false;
+		if ($provider === static::PROVIDER_CLAUDE) {
+			return $claudeModels;
 		}
+		return array_merge($openaiModels, $claudeModels);
 	}
-
-	/**
-	 * Deletes the record from OpenAI
-	 *
-	 * @param string $openaiId
-	 * @return bool
-	 */
-	public function deleteFromOpenAI($openaiId)
-	{
-		try {
-			$integration = Integration::find()
-				->where([
-					'status' => Integration::STATUS_ACTIVE,
-					'deleted' => Integration::NO,
-					'type' => Integration::TYPE_OPENAI,
-					'default' => Integration::YES,
-				])
-				->one();
-			$apiKey = $integration->data;
-			if (!$apiKey) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API key is missing.'));
-			}
-
-			$endpoint = 'https://api.openai.com/v1/assistants/' . $openaiId;
-
-			// cURL request to delete the vector store from OpenAI
-			$ch = curl_init($endpoint);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Authorization: ' . 'Bearer ' . $apiKey,
-				'Content-Type: application/json',
-				'OpenAI-Beta: assistants=v2',
-			]);
-			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-
-			$response = curl_exec($ch);
-			$error = curl_error($ch);
-			curl_close($ch);
-
-			if ($error) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Error') . ': ' . $error);
-			}
-
-			$decodedResponse = json_decode($response, true);
-			if (isset($decodedResponse['error'])) {
-				throw new \Exception(Yii::t('backend', 'OpenAI API Response Error') . ': ' . json_encode($decodedResponse));
-			}
-
-			return true;
-		} catch (\Exception $e) {
-			$this->addError('', $this->getCustomErrorMessage($e));
-			return false;
-		}
-	}
-	//endregion OpenAI
 }
