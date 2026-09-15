@@ -70,6 +70,7 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 				'viewPage',
 				'viewIntegration',
 				'viewKnowledgeBase',
+				'viewKnowledgeBaseDocument',
 				'viewAssistant',
 			],
 			'icon' => 'fa fa-list',
@@ -93,6 +94,12 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 					'icon' => 'fa fa-circle-o',
 					'label' => Yii::t('label', 'Knowledge Bases'),
 					'url' => ['/nomenclature-manager/knowledge-base/index'],
+				],
+				[
+					'roles' => ['viewKnowledgeBaseDocument'],
+					'icon' => 'fa fa-circle-o',
+					'label' => Yii::t('label', 'Documents'),
+					'url' => ['/nomenclature-manager/knowledge-base-document/index'],
 				],
 				[
 					'roles' => ['viewAssistant'],

@@ -13,15 +13,16 @@ site-ului. Implementarea este portată din `masteranunturi` (chei INT în loc de
 | `knowledge_base` (`common\models\KnowledgeBase`) | găzduiește **un** vector store OpenAI (`vector_store_id`, `vs_…`), creat la prima salvare a unui KB cu provider OpenAI (`KnowledgeBaseForm::save()` → `OpenAIResponsesService::ensureVectorStore()`) sau la prima sincronizare a unei pagini |
 | `assistant` (`common\models\Assistant`) | profilul de chat configurabil din backend: `provider`, `model`, `instructions`, `temperature`, `top_p`, `max_tokens`, `type` (azi doar *Chat*), `default`. Nu se creează nimic pe partea OpenAI pentru un asistent |
 | `assistant_knowledge_base` | legătura many-to-many; asistentul caută în vector store-urile tuturor KB-urilor active legate (`Assistant::collectVectorStoreIds()`) |
+| `knowledge_base_document` (`common\models\KnowledgeBaseDocument`) | un fișier încărcat din backend (PDF, DOC/DOCX, PPTX, TXT, MD, HTML, JSON, max 50 MB) care extinde un KB dincolo de paginile scanate; stă în `uploads/knowledge-base-document/<id>/`, iar `openai_file_id` / `vector_store_file_id` / `vector_store_id` / `index_status` (0 neindexat / 1 indexat / 2 eroare) reflectă starea din vector store |
 | `record_vector_index` (`common\models\RecordVectorIndex`) | un rând per pagină indexată: `record_id` = `page.id`, `openai_file_id`, `vector_store_file_id`, `vector_store_id`, `status` (0 neindexat / 1 indexat / 2 eroare), `indexed_at`, `error_message` |
 | `conversation` (`common\models\Conversation`, ex `thread`) | o sesiune a widget-ului; `openai_conversation_id` este obiectul *Conversations API* care ține starea între ture **și** token-ul public pe care widget-ul îl păstrează în `localStorage` |
 | `message` | turele conversației (`conversation_id`, `role` user/assistant, `content`, `status`) |
 | `participant` | păstrat pentru operatorul uman care va putea intra într-o conversație |
 
-Backend: **Nomenclature → Knowledge Bases / Assistants** (`nomenclature-manager`) și
+Backend: **Nomenclature → Knowledge Bases / Documents / Assistants** (`nomenclature-manager`) și
 **Conversations → Conversations / Messages / Participants** (`conversation-manager`).
-Permisiunile sunt `{view,create,update,delete,restore}KnowledgeBase` și
-`{…}Conversation` (`install/db/<tip>/_02_permissions.sql`, `common\models\AuthItem`).
+Permisiunile sunt `{view,create,update,delete,restore}KnowledgeBase`,
+`{…}KnowledgeBaseDocument` și `{…}Conversation` (`install/db/<tip>/_02_permissions.sql`, `common\models\AuthItem`).
 
 ## Indexarea paginilor
 
@@ -56,6 +57,24 @@ php yii ai-index/cleanup         # retrage paginile care nu mai sunt afișabile
 php yii ai-index/reconcile       # lipsă + actualizate + retrase, pentru cron (recomandat la 30 min)
 ```
 
+## Documente încărcate
+
+`common\services\OpenAiDocumentVectorStoreService` urcă fișierul **așa cum este** (OpenAI
+extrage și fragmentează textul) în vector store-ul KB-ului documentului
+(`ensureVectorStore()` dacă KB-ul nu îl are încă), cu atributele `document_id`,
+`source=document`, `name`. Spre deosebire de pagini, un document nu depinde de
+`resolveKnowledgeBase()`: fiecare document merge în KB-ul lui (care trebuie să fie OpenAI).
+
+- `KnowledgeBaseDocumentForm::save()` salvează fișierul și programează `scheduleSync()`
+  (după răspuns) la creare, la schimbarea fișierului, a statusului sau a KB-ului;
+  `syncDocument()` retrage singur documentul când nu mai este indexabil (inactiv, șters,
+  fișier lipsă) și scrie rezultatul pe rând (`index_status`, `error_message`), fără excepții.
+- `KnowledgeBaseDocumentController`: `download`, `reindex` (re-upload), soft delete →
+  `scheduleWithdraw()`, ștergere definitivă → `describeRemote()` + `scheduleRemotePurge()`
+  după commit, restaurare → `scheduleSync()`.
+- `isChatAvailable()` consideră chat-ul operațional și când există doar documente indexate.
+- Console: `php yii ai-index/reindex-documents [id]`; `ai-index/status` afișează și
+  documentele active / indexate / în eroare.
 ## Fluxul widget-ului embed
 
 Endpoint-urile modulului `frontend/modules/embed` (`ChatController`):
@@ -90,8 +109,8 @@ Răspunsurile de eroare către widget sunt `{error: "..."}`: `No prompt provided
 
 ## Teste
 
-`workspace/tests/unit/KnowledgeBaseAssistantTest.php`, `ConversationPersistenceTest.php`,
-`EmbedChatFlowTest.php` — rulează cu `workspace/run-tests.sh` după
+`workspace/tests/unit/KnowledgeBaseAssistantTest.php`, `KnowledgeBaseDocumentTest.php`,
+`ConversationPersistenceTest.php`, `EmbedChatFlowTest.php` — rulează cu `workspace/run-tests.sh` după
 `tools/load-test-schema.sh workspace` (schema din `install/db/_01_structure.sql`). Tura
 propriu-zisă (apelul OpenAI) nu este acoperită automat.
 

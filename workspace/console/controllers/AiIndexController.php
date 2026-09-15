@@ -4,7 +4,9 @@ namespace console\controllers;
 
 use common\models\Integration;
 use common\models\KnowledgeBase;
+use common\models\KnowledgeBaseDocument;
 use common\models\RecordVectorIndex;
+use common\services\OpenAiDocumentVectorStoreService;
 use common\services\OpenAiRecordVectorStoreService;
 use Yii;
 use yii\console\Controller;
@@ -27,6 +29,7 @@ use yii\helpers\Console;
  *   php yii ai-index/withdraw <id>   # remove a single page from the vector store
  *   php yii ai-index/cleanup         # withdraw pages no longer displayable
  *   php yii ai-index/reconcile       # index missing/updated + withdraw stale (scheduled)
+ *   php yii ai-index/reindex-documents [id]  # re-upload the knowledge base documents (all, or one)
  */
 class AiIndexController extends Controller
 {
@@ -131,6 +134,15 @@ class AiIndexController extends Controller
 		$this->stdout("Missing from the index:     {$missing}\n", $missing > 0 ? Console::FG_RED : Console::FG_GREEN);
 		$this->stdout("Stale rows (not listable):  {$stale}\n", $stale > 0 ? Console::FG_YELLOW : Console::FG_GREEN);
 		$this->stdout("Index rows in error:        {$errors}\n", $errors > 0 ? Console::FG_YELLOW : Console::FG_GREEN);
+		$documents = (int) KnowledgeBaseDocument::find()->where(['status' => KnowledgeBaseDocument::STATUS_ACTIVE, 'deleted' => KnowledgeBaseDocument::NO])->count();
+		$documentsIndexed = (int) KnowledgeBaseDocument::find()->where(['status' => KnowledgeBaseDocument::STATUS_ACTIVE, 'deleted' => KnowledgeBaseDocument::NO, 'index_status' => KnowledgeBaseDocument::INDEX_STATUS_INDEXED])->count();
+		$documentsErrors = (int) KnowledgeBaseDocument::find()->where(['deleted' => KnowledgeBaseDocument::NO, 'index_status' => KnowledgeBaseDocument::INDEX_STATUS_ERROR])->count();
+		$this->stdout("Documents (active):         {$documents}\n");
+		$this->stdout("Documents indexed:          {$documentsIndexed}\n", $documentsIndexed < $documents ? Console::FG_YELLOW : Console::FG_GREEN);
+		$this->stdout("Documents in error:         {$documentsErrors}\n", $documentsErrors > 0 ? Console::FG_YELLOW : Console::FG_GREEN);
+		if ($documentsIndexed < $documents) {
+			$this->stdout("Run `php yii ai-index/reindex-documents` to upload the missing documents.\n", Console::FG_YELLOW);
+		}
 		if ($missing > 0) {
 			$this->stdout("Run `php yii ai-index/reindex` to index the missing pages.\n", Console::FG_YELLOW);
 		}
@@ -314,6 +326,52 @@ class AiIndexController extends Controller
 		}
 
 		$this->stdout("\nDone. Indexed: {$done}, failed: {$failed}, withdrawn: " . count($toWithdraw) . ($failed > 0 ? ' — see record_vector_index.error_message' : '') . ".\n", Console::FG_GREEN);
+		return ExitCode::OK;
+	}
+
+	/**
+	 * Uploads the active knowledge base documents (PDF, Word, text...) to their vector stores again.
+	 * Each document goes to the vector store of its own knowledge base, so this does not depend on
+	 * the page index configuration.
+	 *
+	 * @param int|null $id Optional single document id.
+	 * @return int
+	 */
+	public function actionReindexDocuments($id = null)
+	{
+		$query = KnowledgeBaseDocument::find()
+			->where(['deleted' => KnowledgeBaseDocument::NO])
+			->orderBy(['id' => SORT_ASC]);
+		if ($id !== null) {
+			$query->andWhere(['id' => (int) $id]);
+		} else {
+			$query->andWhere(['status' => KnowledgeBaseDocument::STATUS_ACTIVE]);
+		}
+		$ids = $query->select('id')->column();
+
+		$total = count($ids);
+		if ($total === 0) {
+			$this->stdout("No matching documents to index.\n", Console::FG_YELLOW);
+			return ExitCode::OK;
+		}
+
+		$this->stdout("Indexing {$total} document(s)...\n", Console::FG_GREEN);
+		$done = 0;
+		$failed = 0;
+		foreach ($ids as $documentId) {
+			OpenAiDocumentVectorStoreService::syncDocument($documentId);
+			$document = KnowledgeBaseDocument::findOne($documentId);
+			if ($document !== null && (int) $document->index_status === KnowledgeBaseDocument::INDEX_STATUS_INDEXED) {
+				$done++;
+				$this->stdout('.', Console::FG_GREEN);
+			} else {
+				$failed++;
+				Yii::error('AiIndexController reindex-documents document ' . $documentId . ': ' . ($document->error_message ?? 'unknown'), __METHOD__);
+				$this->stdout('x', Console::FG_RED);
+			}
+		}
+
+		$this->stdout("\nDone. Indexed: {$done}, failed: {$failed}" . ($failed > 0 ? ' — see knowledge_base_document.error_message' : '') . ".\n", Console::FG_GREEN);
 		return ExitCode::OK;
 	}
 

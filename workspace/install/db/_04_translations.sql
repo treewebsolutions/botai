@@ -749,7 +749,21 @@ INSERT INTO `language_source` (`id`, `category`, `message`) VALUES
 (969, 'common', 'The chat is not configured yet.'),
 (970, 'common', 'Conversation not found.'),
 (971, 'common', 'Reindex'),
-(972, 'common', 'The page has been queued for indexing.');
+(972, 'common', 'The page has been queued for indexing.'),
+(973, 'label', 'Knowledge Base Documents'),
+(974, 'common', 'Knowledge Base Document'),
+(975, 'common', 'Knowledge Base Documents'),
+(976, 'label', 'Documents'),
+(977, 'label', 'File'),
+(978, 'label', 'Extension'),
+(979, 'label', 'Size'),
+(980, 'label', 'Index Status'),
+(981, 'label', 'Download'),
+(982, 'common', 'Allowed formats: {formats}. Maximum size: {size}.'),
+(983, 'common', 'The document has been queued for indexing.'),
+(984, 'common', 'The knowledge base is not an OpenAI knowledge base.'),
+(985, 'common', 'The file could not be uploaded.'),
+(986, 'common', 'Optional; the file name is used when left empty.');
 
 --
 -- Dumping data for table `language_translate`
@@ -1499,6 +1513,20 @@ INSERT INTO `language_translate` (`id`, `language`, `translation`) VALUES
 (969, 'ro-RO', 'Chat-ul nu este configurat încă.'),
 (970, 'ro-RO', 'Conversația nu a fost găsită.'),
 (971, 'ro-RO', 'Reindexează'),
-(972, 'ro-RO', 'Pagina a fost pusă în coada de indexare.');
+(972, 'ro-RO', 'Pagina a fost pusă în coada de indexare.'),
+(973, 'ro-RO', 'Documente din baza de cunoștințe'),
+(974, 'ro-RO', 'Document din baza de cunoștințe'),
+(975, 'ro-RO', 'Documente din baza de cunoștințe'),
+(976, 'ro-RO', 'Documente'),
+(977, 'ro-RO', 'Fișier'),
+(978, 'ro-RO', 'Extensie'),
+(979, 'ro-RO', 'Dimensiune'),
+(980, 'ro-RO', 'Stare indexare'),
+(981, 'ro-RO', 'Descarcă'),
+(982, 'ro-RO', 'Formate acceptate: {formats}. Dimensiune maximă: {size}.'),
+(983, 'ro-RO', 'Documentul a fost pus în coada de indexare.'),
+(984, 'ro-RO', 'Baza de cunoștințe nu este o bază de cunoștințe OpenAI.'),
+(985, 'ro-RO', 'Fișierul nu a putut fi încărcat.'),
+(986, 'ro-RO', 'Opțional; dacă rămâne gol se folosește numele fișierului.');
 
 SET FOREIGN_KEY_CHECKS=1;

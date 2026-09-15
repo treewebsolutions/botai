@@ -188,12 +188,14 @@ class OpenAiRecordVectorStoreService
 				return false;
 			}
 
+			// Something must be searchable: an indexed page or an indexed uploaded document.
 			return RecordVectorIndex::find()
 				->where([
 					'status' => RecordVectorIndex::STATUS_ACTIVE,
 					'deleted' => RecordVectorIndex::NO,
 				])
-				->exists();
+				->exists()
+				|| OpenAiDocumentVectorStoreService::hasIndexedDocuments();
 		} catch (\Throwable $e) {
 			Yii::warning('isChatAvailable check failed: ' . $e->getMessage(), __METHOD__);
 			return false;

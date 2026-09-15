@@ -718,6 +718,42 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
+-- Table `knowledge_base_document`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `knowledge_base_document` ;
+
+CREATE TABLE IF NOT EXISTS `knowledge_base_document` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `knowledge_base_id` INT NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `file` VARCHAR(255) NOT NULL,
+  `extension` VARCHAR(16) NULL DEFAULT NULL,
+  `size` INT(11) NULL DEFAULT 0,
+  `openai_file_id` VARCHAR(128) NULL DEFAULT NULL,
+  `vector_store_file_id` VARCHAR(128) NULL DEFAULT NULL,
+  `vector_store_id` VARCHAR(128) NULL DEFAULT NULL,
+  `index_status` TINYINT(4) NOT NULL DEFAULT 0 COMMENT '0=not indexed,1=indexed,2=error',
+  `indexed_at` DATETIME NULL DEFAULT NULL,
+  `error_message` TEXT NULL DEFAULT NULL,
+  `created_by` INT(11) NULL DEFAULT NULL,
+  `updated_by` INT(11) NULL DEFAULT NULL,
+  `created_at` DATETIME NULL DEFAULT NULL,
+  `updated_at` DATETIME NULL DEFAULT NULL,
+  `status` TINYINT(4) NOT NULL,
+  `deleted` TINYINT(1) NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  INDEX `deleted` (`deleted` ASC),
+  INDEX `index_status` (`index_status` ASC),
+  INDEX `fk_knowledge_base_document_knowledge_base1_idx` (`knowledge_base_id` ASC),
+  CONSTRAINT `fk_knowledge_base_document_knowledge_base1`
+    FOREIGN KEY (`knowledge_base_id`)
+    REFERENCES `knowledge_base` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
 -- Table `conversation`
 -- -----------------------------------------------------
 DROP TABLE IF EXISTS `conversation` ;

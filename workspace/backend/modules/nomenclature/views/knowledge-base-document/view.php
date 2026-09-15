@@ -1,10 +1,10 @@
 <?php
 
 /* @var $this yii\web\View */
-/* @var $model common\models\KnowledgeBase */
+/* @var $model common\models\KnowledgeBaseDocument */
 
-use common\models\KnowledgeBase;
 use common\models\EventLog;
+use common\models\KnowledgeBaseDocument;
 use common\widgets\datatable\DataTable;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
@@ -12,21 +12,21 @@ use tws\helpers\Url;
 use yii\web\JsExpression;
 use yii\widgets\DetailView;
 
-$this->title = Yii::t('common', 'View {item}', ['item' => Yii::t('common', 'Knowledge Base')]);
+$this->title = Yii::t('common', 'View {item}', ['item' => Yii::t('common', 'Knowledge Base Document')]);
 $this->params['breadcrumbs'] = [
 	[
 		'label' => Yii::t('common', 'Nomenclature'),
 		'url' => ['default/index'],
 	],
 	[
-		'label' => Yii::t('common', 'Knowledge Bases'),
+		'label' => Yii::t('common', 'Knowledge Base Documents'),
 		'url' => ['index'],
 	],
 	Yii::t('common', 'View'),
 ];
 $this->params['actions'] = [
 	[
-		'visible' => Yii::$app->user->can('viewKnowledgeBase'),
+		'visible' => Yii::$app->user->can('viewKnowledgeBaseDocument'),
 		'tag' => 'a',
 		'url' => ['index'],
 		'icon' => 'fa fa-list',
@@ -41,18 +41,32 @@ $this->params['actions'] = [
 	[
 		'visible' => Yii::$app->user->can('viewKnowledgeBaseDocument'),
 		'tag' => 'a',
-		'url' => ['knowledge-base-document/index', 'knowledge_base_id' => $model->id],
-		'icon' => 'fa fa-file-text-o',
+		'url' => ['download', 'id' => $model->id],
+		'icon' => 'fa fa-download',
 		'options' => [
-			'class' => 'btn btn-sm btn-info',
-			'title' => Yii::t('label', 'Documents'),
+			'class' => 'btn btn-sm btn-default',
+			'title' => Yii::t('label', 'Download'),
+			'target' => '_blank',
 			'data' => [
 				'toggle' => 'tooltip',
 			],
 		],
 	],
 	[
-		'visible' => Yii::$app->user->can('updateKnowledgeBase'),
+		'visible' => Yii::$app->user->can('updateKnowledgeBaseDocument'),
+		'tag' => 'a',
+		'url' => ['reindex', 'id' => $model->id],
+		'icon' => 'fa fa-refresh',
+		'options' => [
+			'class' => 'btn btn-sm btn-warning',
+			'title' => Yii::t('common', 'Reindex'),
+			'data' => [
+				'toggle' => 'tooltip',
+			],
+		],
+	],
+	[
+		'visible' => Yii::$app->user->can('updateKnowledgeBaseDocument'),
 		'tag' => 'a',
 		'url' => ['update', 'id' => $model->id],
 		'icon' => 'fa fa-edit',
@@ -65,7 +79,7 @@ $this->params['actions'] = [
 		],
 	],
 	[
-		'visible' => Yii::$app->user->can('deleteKnowledgeBase'),
+		'visible' => Yii::$app->user->can('deleteKnowledgeBaseDocument'),
 		'tag' => 'a',
 		'url' => ['delete', 'id' => $model->id],
 		'icon' => 'fa fa-trash',
@@ -80,7 +94,7 @@ $this->params['actions'] = [
 		],
 	],
 	[
-		'visible' => Yii::$app->user->can('createKnowledgeBase'),
+		'visible' => Yii::$app->user->can('createKnowledgeBaseDocument'),
 		'tag' => 'a',
 		'url' => ['create'],
 		'icon' => 'fa fa-plus',
@@ -117,100 +131,107 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Name'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->name ?: '&mdash;';
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->name ? Html::encode($model->name) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'Description'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->description ?: '&mdash;';
+							'label' => Yii::t('label', 'Knowledge Base'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->knowledgeBase ? Html::a(Html::encode($model->knowledgeBase->name), ['knowledge-base/view', 'id' => $model->knowledgeBase->id]) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'Provider Type'),
-							'value' => function (KnowledgeBase $model) {
-								$labels = [null => Yii::t('label', 'Generic')] + KnowledgeBase::getProviderLabels();
-								return $labels[$model->provider] ?? '&mdash;';
+							'label' => Yii::t('label', 'File'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->file ? Html::a(Html::encode($model->file), ['download', 'id' => $model->id], ['target' => '_blank']) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'Embedding Model'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->embedding_model ?: '&mdash;';
+							'label' => Yii::t('label', 'Extension'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->extension ? strtoupper($model->extension) : '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'Size'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->size ? Yii::$app->formatter->asShortSize($model->size) : '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'Index Status'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								$status = KnowledgeBaseDocument::getIndexStatusLabels()[$model->index_status] ?? null;
+								return $status ? Html::tag('span', $status['label'], ['class' => 'label label-' . $status['color']]) : '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'Indexed At'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->indexed_at ? Yii::$app->formatter->asDatetime($model->indexed_at) : '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'Error'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->error_message ? Html::encode($model->error_message) : '&mdash;';
+							},
+						],
+						[
+							'format' => 'html',
+							'label' => Yii::t('label', 'OpenAI File ID'),
+							'value' => function (KnowledgeBaseDocument $model) {
+								return $model->openai_file_id ?: '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Vector Store ID'),
-							'value' => function (KnowledgeBase $model) {
+							'value' => function (KnowledgeBaseDocument $model) {
 								return $model->vector_store_id ?: '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
-							'label' => Yii::t('label', 'Chunk Size'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->chunk_size ?: '&mdash;';
-							},
-						],
-						[
-							'format' => 'html',
-							'label' => Yii::t('label', 'Chunk Overlap'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->chunk_overlap ?: '&mdash;';
-							},
-						],
-						[
-							'format' => 'html',
-							'label' => Yii::t('label', 'Tokens Per File'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->tokens_per_file ?: '&mdash;';
-							},
-						],
-						[
-							'format' => 'html',
-							'label' => Yii::t('label', 'Expire At'),
-							'value' => function (KnowledgeBase $model) {
-								return $model->expire_at ? Yii::$app->formatter->asDatetime($model->expire_at) : '&mdash;';
-							},
-						],
-						[
-							'format' => 'html',
 							'label' => Yii::t('label', 'Created By'),
-							'value' => function (KnowledgeBase $model) {
+							'value' => function (KnowledgeBaseDocument $model) {
 								return $model->creator ? Html::a($model->creator->getFullName(), ['/user-manager/user/view', 'id' => $model->creator->id]) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Created At'),
-							'value' => function (KnowledgeBase $model) {
+							'value' => function (KnowledgeBaseDocument $model) {
 								return $model->created_at ? Yii::$app->formatter->asDatetime($model->created_at) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Updated By'),
-							'value' => function (KnowledgeBase $model) {
+							'value' => function (KnowledgeBaseDocument $model) {
 								return $model->updater ? Html::a($model->updater->getFullName(), ['/user-manager/user/view', 'id' => $model->updater->id]) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Updated At'),
-							'value' => function (KnowledgeBase $model) {
+							'value' => function (KnowledgeBaseDocument $model) {
 								return $model->updated_at ? Yii::$app->formatter->asDatetime($model->updated_at) : '&mdash;';
 							},
 						],
 						[
 							'format' => 'html',
 							'label' => Yii::t('label', 'Status'),
-							'value' => function (KnowledgeBase $model) {
-								$status = KnowledgeBase::getStatusLabels()[$model->status];
+							'value' => function (KnowledgeBaseDocument $model) {
+								$status = KnowledgeBaseDocument::getStatusLabels()[$model->status];
 								return Html::tag('span', $status['label'], ['class' => 'label label-' . $status['color']]);
 							},
 						],
@@ -248,7 +269,7 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 						'url' => Url::to(['/eventlog-manager/event-log/dt-event-logs']),
 						'method' => 'POST',
 						'data' => new JsExpression('function (data) {
-							data.model = ' . json_encode(\common\models\KnowledgeBase::class) . '; 
+							data.model = ' . json_encode(\common\models\KnowledgeBaseDocument::class) . ';
 							data.model_key = "' . $model->id . '";
 						}'),
 						'reloadInterval' => 5 * 60000,
@@ -309,4 +330,3 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 		</div>
 	</div>
 <?php endif; ?>
-

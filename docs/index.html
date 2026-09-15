@@ -5,7 +5,16 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>BotAI — Asistentul tău virtual, alimentat de AI</title>
 	<meta name="description" content="BotAI răspunde vizitatorilor site-ului tău, non-stop, folosind doar informațiile de pe paginile tale. Se instalează într-un minut, fără cunoștințe tehnice.">
-	<link rel="icon" href="assets/img/favicon.ico">
+	<link rel="icon" href="assets/img/ico/favicon.ico" sizes="any">
+	<link rel="icon" type="image/png" sizes="16x16" href="assets/img/ico/favicon-16x16.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="assets/img/ico/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="96x96" href="assets/img/ico/favicon-96x96.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="assets/img/ico/apple-icon-180x180.png">
+	<link rel="icon" type="image/png" sizes="192x192" href="assets/img/ico/android-icon-192x192.png">
+	<link rel="manifest" href="assets/img/ico/manifest.json">
+	<meta name="msapplication-config" content="assets/img/ico/browserconfig.xml">
+	<meta name="msapplication-TileColor" content="#ffffff">
+	<meta name="theme-color" content="#72a4f7">
 	<meta property="og:title" content="BotAI — Asistentul tău virtual, alimentat de AI">
 	<meta property="og:description" content="Un asistent care cunoaște site-ul tău și răspunde clienților în timp real, zi și noapte.">
 	<meta property="og:image" content="assets/img/logo.png">
@@ -146,7 +155,7 @@
 			<div class="col-md-4">
 				<div class="step-number bg-brand-yellow">2</div>
 				<h4>Își construiește „memoria”</h4>
-				<p class="text-secondary mb-0">Din paginile citite își face o bază de cunoștințe proprie, pe care o ține la zi automat, ori de câte ori site-ul se schimbă.</p>
+				<p class="text-secondary mb-0">Din paginile citite își face o bază de cunoștințe proprie, pe care o ține la zi automat, ori de câte ori site-ul se schimbă. O poți completa și cu documentele tale: broșuri PDF, liste de prețuri, regulamente, fișiere Word sau text.</p>
 			</div>
 			<div class="col-md-4">
 				<div class="step-number bg-brand-red">3</div>
@@ -183,6 +192,13 @@
 					<div class="feature-icon bg-brand-yellow"><i class="bi bi-envelope-paper-fill"></i></div>
 					<h5>Conversația, trimisă pe email</h5>
 					<p class="text-secondary mb-0">Vizitatorul își poate trimite discuția pe email dintr-un singur clic, ca să aibă răspunsurile la îndemână mai târziu.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-yellow"><i class="bi bi-file-earmark-pdf-fill"></i></div>
+					<h5>Documentele tale, nu doar site-ul</h5>
+					<p class="text-secondary mb-0">Încarci din panoul de administrare broșuri, liste de prețuri, regulamente sau ghiduri (PDF, Word, PowerPoint, text) și asistentul răspunde și din ele, la fel de exact ca din paginile site-ului.</p>
 				</div>
 			</div>
 			<div class="col-md-6 col-lg-4">
@@ -340,7 +356,7 @@
 					<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">Trebuie să scriu eu răspunsurile?</button>
 				</h2>
 				<div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faq">
-					<div class="accordion-body text-secondary">Nu. BotAI folosește ceea ce este deja pe site-ul tău. Cu cât site-ul este mai complet, cu atât răspunsurile sunt mai bune. Dacă vrei, îi poți da în plus câteva indicații despre cum să se poarte.</div>
+					<div class="accordion-body text-secondary">Nu. BotAI folosește ceea ce este deja pe site-ul tău. Cu cât site-ul este mai complet, cu atât răspunsurile sunt mai bune. Ce nu este pe site poți adăuga ca document (o broșură PDF, o listă de prețuri, un regulament), iar dacă vrei, îi poți da și câteva indicații despre cum să se poarte.</div>
 				</div>
 			</div>
 			<div class="accordion-item">
@@ -405,7 +421,7 @@
 
 <footer class="py-4">
 	<div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
-		<a href="#top"><img src="assets/img/logo.png" alt="BotAI" height="26"></a>
+		<a class="footer-brand" href="#top"><img src="assets/img/logo.png" alt="BotAI"></a>
 		<span>&copy; <span id="year"></span> BotAI &middot; Tree Web Solutions</span>
 		<span><a href="/">Aplicația</a> &middot; <a href="/documentation">Documentație</a></span>
 	</div>

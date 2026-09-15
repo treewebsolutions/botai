@@ -182,6 +182,16 @@ class AuthItem extends CommonActiveRecord
 							'restoreKnowledgeBase' => Yii::t('label', 'Restore'),
 						],
 					],
+					'KnowledgeBaseDocument' => [
+						'heading' => Yii::t('label', 'Knowledge Base Documents'),
+						'items' => [
+							'viewKnowledgeBaseDocument' => Yii::t('label', 'View'),
+							'createKnowledgeBaseDocument' => Yii::t('label', 'Create'),
+							'updateKnowledgeBaseDocument' => Yii::t('label', 'Update'),
+							'deleteKnowledgeBaseDocument' => Yii::t('label', 'Delete'),
+							'restoreKnowledgeBaseDocument' => Yii::t('label', 'Restore'),
+						],
+					],
 					'Assistant' => [
 						'heading' => Yii::t('label', 'Assistants'),
 						'items' => [

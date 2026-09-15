@@ -73,7 +73,8 @@ h1, h2, h3, h4, .display-5 {
 	backdrop-filter: blur(6px);
 }
 
-.navbar-brand img {
+.navbar-brand img,
+.footer-brand img {
 	height: 34px;
 }
 
