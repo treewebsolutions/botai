@@ -43,10 +43,15 @@ return [
 			'cacheDuration' => 24 * 60 * 60,
 		],
 		'cPanel' => [
-			'class' => 'tws\cpanel\CPanel',
+			// Prefer an API token (cPanel > Security > Manage API Tokens): an account with
+			// two-factor authentication cannot authenticate with its password here, and a
+			// token keeps the account password out of the requests. Leave `apiToken` empty
+			// to fall back to `password`.
+			'class' => 'common\components\CPanel',
 			'baseUrl' => 'CPANEL_BASE_URL',
 			'username' => 'CPANEL_USERNAME',
 			'password' => 'CPANEL_PASSWORD',
+			'apiToken' => '',
 		],
 	],
 ];

@@ -89,6 +89,19 @@ $this->params['actions'] = [
 		],
 	],
 	[
+		'visible' => Yii::$app->user->can('updateWorkspace'),
+		'tag' => 'a',
+		'url' => ['cache-flush'],
+		'icon' => 'fa fa-eraser',
+		'options' => [
+			'class' => 'btn btn-sm btn-info',
+			'title' => Yii::t('common', 'Flush Workspaces Cache'),
+			'data' => [
+				'toggle' => 'tooltip',
+			],
+		],
+	],
+	[
 		'visible' => Yii::$app->user->can('updateWorkspace') && Yii::$app->user->identity->authAssignment->item_name == 'superAdmin',
 		'tag' => 'a',
 		'url' => ['database-update'],

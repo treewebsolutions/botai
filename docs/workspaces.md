@@ -102,13 +102,16 @@ marcajele (fără reguli de tenant).
      `{{NAME}}` (= `code`), `{{URL}}` (folosit în `request.baseUrl` și
      `urlManager.baseUrl`: `/<url>` pentru frontend/console, `/<url>/admin` pentru backend).
 
-3. **`updateCrontab()`** — doar pe cPanel: adaugă
+3. **`ensureCpanelAddonDomain()`** — doar pe cPanel: creează *addon domain*-ul care
+   servește tenantul (vezi „Local vs cPanel”).
+
+4. **`updateCrontab()`** — doar pe cPanel: adaugă
    `/usr/local/bin/php <root>/workspaces/<domeniu>/yii schedule/run` la fiecare minut.
    Local este no-op; serviciul `scheduler` din `docker/docker-compose.yml` rulează
    la fiecare 60 s `yii schedule/run` pentru master și pentru fiecare
    `workspaces/*/yii`.
 
-4. **`updateHtaccess()`** — regula de rutare de mai sus.
+5. **`updateHtaccess()`** — regula de rutare de mai sus.
 
 Orice pas eșuat este logat (`Yii::error`) și pus pe model (`$model->getErrors()`);
 `actionReinstall` afișează cauza în mesajul flash / răspunsul JSON.
@@ -116,11 +119,58 @@ Orice pas eșuat este logat (`Yii::error`) și pus pe model (`$model->getErrors(
 ### Local vs cPanel
 
 `Workspace::isLocalInstallEnvironment()` este adevărat când `YII_ENV_DEV` este activ
-sau când nu există o componentă `cPanel` utilizabilă (`isCPanelConfigured()`).
-Local baza de date se creează/șterge direct prin PDO (`CREATE DATABASE` /
+sau când nu există o componentă `cPanel` utilizabilă (`isCPanelConfigured()`: componenta
+se instanțiază fără eroare **și** `CPanel::isConfigured()` nu găsește placeholder-ele
+`CPANEL_*`). Local baza de date se creează/șterge direct prin PDO (`CREATE DATABASE` /
 `DROP DATABASE`; `GRANT`-ul este best-effort, MySQL 8 refuză forma veche cu
-`IDENTIFIED BY`), iar crontab-ul este sărit. Verificarea `YII_ENV_DEV` se face
-prima, ca să nu fie instanțiată componenta `cPanel` cu valorile placeholder din dev.
+`IDENTIFIED BY`), crontab-ul și addon domain-ul sunt sărite, iar `baseUrl`-urile
+tenantului primesc prefixul `/<url>` (rutare prin `.htaccess`-ul din rădăcină).
+
+Pe cPanel (portat din masteranunturi, cu chei INT):
+
+- **Componenta** `master/common/components/CPanel.php` (extinde `tws\cpanel\CPanel`):
+  trimite corect header-ul `Authorization` (pachetul original îl pierdea și primea 401),
+  acceptă **API token** (`apiToken`, cPanel → Security → Manage API Tokens; obligatoriu
+  pentru conturi cu 2FA, preferat față de parolă), timeout 30 s, `verifySsl = false`
+  și întoarce corpul JSON chiar și la refuz (apelanții citesc `errors`). Configurare în
+  `master/common/config/main-local.php`:
+
+  ```php
+  'cPanel' => [
+      'class' => 'common\components\CPanel',
+      'baseUrl' => 'https://host:2083',
+      'username' => 'cpaneluser',
+      'password' => '',        // sau
+      'apiToken' => '...',
+  ],
+  ```
+
+- **`installDatabase()`**: `Mysql::create_database` + `Mysql::set_privileges_on_database`
+  prin UAPI; răspunsurile eșuate sunt logate (`logCpanelUapiFailure`, categoria `cpanel`)
+  fără să oprească instalarea („already exists” la reinstall este benign), un `GRANT`
+  refuzat este reținut și apare în mesajul de eroare dacă baza nu poate fi deschisă,
+  `ALTER DATABASE ... utf8` este best-effort (host-urile shared refuză ALTER pe bază).
+- **`installDirectory()`**: pe cPanel tenantul este servit din document root-ul addon
+  domain-ului, deci `/{{URL}}` devine `''` (`baseUrl` = `''` / `/admin`).
+- **`ensureCpanelAddonDomain()`**: `domain` trebuie să fie un domeniu real cu TLD
+  (`primadentalclinic.ro`); dacă lipsește din `DomainInfo::list_domains`, îl creează prin
+  API2 `AddonDomain::addaddondomain` cu `subdomain` = eticheta dinaintea primului punct,
+  `dir` = `public_html/workspaces/<domeniu>` și o parolă FTP aleatoare (parola contului nu
+  ajunge pe fir). Eroarea reală a cPanel-ului ajunge în `$model->getErrors()`.
+- **`uninstall()`**: `Mysql::delete_database` (logat), cron-ul și regula din `.htaccess`;
+  addon domain-ul nu este șters.
+
+Diagnoză din consolă (`master/console/controllers/WorkspaceInstallController.php`):
+
+```bash
+php yii workspace-install/diagnose                  # mediu, grant-uri, cPanel, filesystem, toate workspace-urile
+php yii workspace-install/diagnose primadentalclinic # un singur workspace (cod, url, domeniu sau id numeric)
+php yii workspace-install/run primadentalclinic --reinstall
+php yii workspace-install/cpanel-api                # ce apeluri de creare domeniu mai răspunde acest cPanel
+```
+
+`diagnose` este read-only (creează și șterge o singură tabelă-probă în baza tenantului);
+`run` face instalarea reală și afișează pasul care a eșuat cu tot lanțul de excepții.
 
 ## Scheletul de instalare — adâncimea căilor
 
@@ -148,6 +198,11 @@ recursivă să nu intre în sursele partajate din `workspace/`, mai ales pe Wind
 
 ## Reîmprospătarea link-urilor
 
+**Subscriber → Workspaces → Flush Workspaces Cache** (`actionCacheFlush`) golește
+`backend|frontend|console/runtime/cache` din fiecare tenant instalat local
+(`Workspace::flushTenantCache()`), ca o modificare făcută direct din master (Database
+Update, setări) să nu rămână mascată de valorile cache-uite ale tenantului.
+
 **Subscriber → Workspaces → Symlink update** (`actionSymlinkUpdate`, doar `superAdmin`)
 recreează link-urile pentru toți tenanții activi care au directorul provizionat pe
 mediul curent, din același `getSymlinkMap()`; link-urile existente sunt șterse și
@@ -160,6 +215,8 @@ refăcute relative (o provizionare veche le putea crea absolute).
   `isCPanelConfigured()`, `isLocalInstallEnvironment()`, `installDatabase()`,
   `importSqlFile()`, `installDirectory()`, `updateCrontab()`, `updateHtaccess()`,
   `saveUrl()`, `install()`, `uninstall()`.
+- `master/common/components/CPanel.php` — clientul cPanel (token, header corect).
+- `master/console/controllers/WorkspaceInstallController.php` — `diagnose`, `run`, `cpanel-api`.
 - `master/common/helpers/FileHelper.php` — `symlink()` relativ / junction.
 - `workspace/install/dir/`, `workspace/install/db/` — șabloanele.
 - `workspace/common/config/bootstrap.php` — `@workspaces` → `<root>/workspaces`.

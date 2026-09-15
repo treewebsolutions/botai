@@ -38,7 +38,7 @@ class WorkspaceController extends MainController
 					],
 					[
 						'allow' => true,
-						'actions' => ['update', 'reinstall', 'database-update', 'database-update-logs', 'dt-database-update-logs', 'symlink-update'],
+						'actions' => ['update', 'reinstall', 'database-update', 'database-update-logs', 'dt-database-update-logs', 'symlink-update', 'cache-flush'],
 						'roles' => ['updateWorkspace'],
 					],
 					[
@@ -376,6 +376,52 @@ class WorkspaceController extends MainController
 			Yii::$app->session->setFlash('error', $message);
 		} else {
 			$message = Yii::t('common', 'Records successfully updated.');
+			if (Yii::$app->request->isAjax) {
+				return $this->asJson([
+					'success' => true,
+					'message' => $message,
+				]);
+			}
+			Yii::$app->session->setFlash('success', $message);
+		}
+		return $this->redirect(['index']);
+	}
+
+	/**
+	 * Flushes the runtime file cache of every active installed workspace, so direct
+	 * changes made from master (database updates, settings pushes) become visible in the
+	 * tenants immediately instead of being masked by their cached values.
+	 *
+	 * @return mixed
+	 */
+	public function actionCacheFlush()
+	{
+		$models = Workspace::find()
+			->where([
+				'status' => Workspace::STATUS_ACTIVE,
+				'deleted' => Workspace::NO,
+			])
+			->all();
+		$errors = [];
+		$flushed = 0;
+		foreach ($models as $model) {
+			try {
+				$dirPath = $model->getDirectoryPath();
+				// Skip workspaces that are not provisioned on this environment
+				// (no directory under <root>/workspaces/, e.g. cPanel-only tenants).
+				if (!$dirPath || !is_dir($dirPath)) {
+					continue;
+				}
+				$model->flushTenantCache();
+				$flushed++;
+			} catch (\Exception $e) {
+				$errors[] = $model->code . ': ' . $e->getMessage();
+			}
+		}
+		if (!empty($errors)) {
+			Yii::$app->session->setFlash('error', implode('<br>', $errors));
+		} else {
+			$message = Yii::t('common', 'The cache of {n} workspaces has been flushed.', ['n' => $flushed]);
 			if (Yii::$app->request->isAjax) {
 				return $this->asJson([
 					'success' => true,

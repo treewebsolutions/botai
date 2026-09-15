@@ -401,7 +401,7 @@ The database/crontab steps branch on `Workspace::isLocalInstallEnvironment()`
 | Environment | Database create/drop | Crontab |
 |-------------|----------------------|---------|
 | `YII_ENV_DEV` (Docker, Laragon, OrbStack) or no `cPanel` component | Direct `CREATE DATABASE` / `DROP DATABASE` via PDO on the `db` service (the `GRANT` is best-effort) | Skipped — the `scheduler` compose service runs `yii schedule/run` for master and every `workspaces/*/yii` each minute |
-| Production with `cPanel` component configured (`YII_ENV=prod`) | `Yii::$app->cPanel->uapi->Mysql->create_database(...)` and `set_privileges_on_database(...)` | `Yii::$app->cPanel->api2->Cron->add_line(...)` with `<root>/workspaces/<domain>/yii schedule/run` |
+| Production with `cPanel` component configured (`YII_ENV=prod`) | `Yii::$app->cPanel->uapi->Mysql->create_database(...)` and `set_privileges_on_database(...)` (failures logged under the `cpanel` category, grant refusals surfaced in the error), best-effort `ALTER DATABASE ... utf8`, then the addon domain (`ensureCpanelAddonDomain()`, API2 `AddonDomain::addaddondomain`, document root `public_html/workspaces/<domain>`) | `Yii::$app->cPanel->api2->Cron->add_line(...)` with `<root>/workspaces/<domain>/yii schedule/run` |
 
 This is why local reinstalls do **not** require valid `cPanel` credentials in
 `master/common/config/main-local.php`. The `cPanel` component can stay with the
@@ -433,11 +433,25 @@ with real values:
 
 ```php
 'cPanel' => [
-    'class'    => 'tws\cpanel\CPanel',
+    'class'    => 'common\components\CPanel',
     'baseUrl'  => 'https://your-cpanel-host:2083',
     'username' => 'cpaneluser',
-    'password' => 'cpanelpass',
+    'password' => 'cpanelpass',   // or, preferred (required with 2FA):
+    'apiToken' => '',             // cPanel > Security > Manage API Tokens
 ],
+```
+
+`common\components\CPanel` (ported from masteranunturi) fixes the `Authorization`
+header the original `tws\cpanel\CPanel` never sent, supports API tokens and returns
+the JSON body on refusals so the installer can show cPanel's own reason. On cPanel
+the workspace `domain` must be a real domain with a TLD: it becomes the addon domain
+and the tenant is served from its document root, so the tenant `baseUrl`s drop the
+`/<url>` prefix. Diagnose an environment before touching anything with:
+
+```bash
+docker compose exec -T web php master/yii workspace-install/diagnose
+php master/yii workspace-install/cpanel-api     # on the server: which domain-creation calls still answer
+php master/yii workspace-install/run <code> --reinstall
 ```
 
 ---

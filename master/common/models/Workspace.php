@@ -7,6 +7,7 @@ use yii\behaviors\BlameableBehavior;
 use yii\behaviors\TimestampBehavior;
 use tws\helpers\DbHelper;
 use common\helpers\FileHelper;
+use yii\httpclient\Client;
 use yii\db\ActiveQuery;
 use yii\db\Query;
 use yii2tech\ar\softdelete\SoftDeleteBehavior;
@@ -467,10 +468,16 @@ class Workspace extends CommonActiveRecord
 	public function isCPanelConfigured()
 	{
 		try {
-			return Yii::$app->get('cPanel') instanceof \tws\cpanel\CPanel;
+			$cpanel = Yii::$app->get('cPanel');
 		} catch (\Throwable $e) {
 			return false;
 		}
+		if (!$cpanel instanceof \tws\cpanel\CPanel) {
+			return false;
+		}
+		// common\components\CPanel also knows whether it holds real credentials rather
+		// than the CPANEL_* placeholders of an environment file that was never filled in.
+		return !method_exists($cpanel, 'isConfigured') || $cpanel->isConfigured();
 	}
 
 	/**
@@ -506,6 +513,7 @@ class Workspace extends CommonActiveRecord
 	{
 		$db = static::getDb();
 		$dbName = $this->getWorkspaceDbName();
+		$grantFailure = null;
 
 		try {
 			// Create the database
@@ -526,26 +534,55 @@ class Workspace extends CommonActiveRecord
 					], __METHOD__);
 				}
 			} else {
-				// Create the database using the cPanel API
-				Yii::$app->cPanel->uapi->Mysql->create_database(['name' => $dbName]);
-				Yii::$app->cPanel->uapi->Mysql->set_privileges_on_database([
+				// Create the database using the cPanel API. Failures are logged but not
+				// fatal here: "already exists" on a reinstall is benign, and a truly
+				// unusable database makes the connection check below fail loudly anyway.
+				$response = Yii::$app->cPanel->uapi->Mysql->create_database(['name' => $dbName]);
+				$this->logCpanelUapiFailure('Mysql::create_database', $response);
+				$response = Yii::$app->cPanel->uapi->Mysql->set_privileges_on_database([
 					'user' => $db->username,
 					'database' => $dbName,
 					'privileges' => 'ALL PRIVILEGES',
 				]);
+				$this->logCpanelUapiFailure('Mysql::set_privileges_on_database', $response);
+				if (!is_array($response) || (int) ($response['status'] ?? 0) !== 1) {
+					// Not fatal on its own — the user may already hold the grant from an
+					// earlier install — but remembered, so the connection check below can
+					// name the real cause instead of leaving a bare "Access denied".
+					$grantFailure = $this->describeCpanelFailure($response);
+				}
+
+				// cPanel's create_database uses the server default charset (latin1 on many
+				// shared hosts). Every CREATE TABLE in _01_structure.sql pins its own charset,
+				// so this only realigns the database for anything created later. Best effort:
+				// a shared host withholds ALTER on the database itself (ERROR 1044) from a
+				// user that only holds table-level grants.
+				try {
+					$db->createCommand("ALTER DATABASE `{$dbName}` CHARACTER SET utf8 COLLATE utf8_unicode_ci")->execute();
+				} catch (\Exception $e) {
+					Yii::warning([
+						'message' => 'Cannot set the workspace database default charset; the tables pin their own.',
+						'workspace' => $this->code,
+						'error' => $e->getMessage(),
+					], 'cpanel');
+				}
 			}
 
 			// Get the database instance and fail here, with the cause, rather than midway
-			// through the first import.
+			// through the first import: the cPanel grant call above only warns, so without
+			// this the operator sees PDO's bare "Access denied" and nothing about why.
 			$workspaceDb = $this->getWorkspaceDb();
 			try {
 				$workspaceDb->open();
 			} catch (\Exception $e) {
 				throw new \Exception(sprintf(
-					'The workspace database %s is not reachable with the master credentials (%s): %s',
+					'The workspace database %s is not reachable with the master credentials (%s): %s %s',
 					$dbName,
 					$db->username,
-					$e->getMessage()
+					$e->getMessage(),
+					$grantFailure === null
+						? 'Check the cPanel MySQL privileges for this database.'
+						: "cPanel refused the privilege grant: {$grantFailure}"
 				), 0, $e);
 			}
 
@@ -644,6 +681,48 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Turns a failed cPanel UAPI response into one readable sentence, for the errors
+	 * shown to the operator.
+	 *
+	 * @param mixed $response
+	 * @return string
+	 */
+	protected function describeCpanelFailure($response): string
+	{
+		if (!is_array($response)) {
+			// CPanel::makeRequest() returns false when the HTTP request itself failed or
+			// the answer was not JSON: a wrong base URL, wrong credentials or a blocked
+			// port — not a cPanel refusal.
+			return 'the HTTP request failed (check the cPanel base URL, credentials and firewall)';
+		}
+
+		$errors = $response['errors'] ?? null;
+
+		return $errors ? implode('; ', (array) $errors) : 'no error message returned';
+	}
+
+	/**
+	 * Logs a cPanel UAPI response when it reports failure (status != 1) or came back
+	 * malformed. Logging instead of aborting keeps reinstalls idempotent ("database
+	 * already exists" is benign) while leaving a trace for real failures.
+	 *
+	 * @param string $operation
+	 * @param mixed $response
+	 */
+	protected function logCpanelUapiFailure(string $operation, $response): void
+	{
+		if (is_array($response) && (int) ($response['status'] ?? 0) === 1) {
+			return;
+		}
+
+		Yii::warning([
+			'message' => "cPanel {$operation} failed.",
+			'workspace' => $this->code,
+			'response' => $response,
+		], 'cpanel');
+	}
+
+	/**
 	 * Gets the tenant configuration files that carry install-time placeholders / baseUrls.
 	 *
 	 * @return array
@@ -704,16 +783,25 @@ class Workspace extends CommonActiveRecord
 			// Link the shared source/asset directories from the @workspace app into the tenant.
 			FileHelper::symlink($this->getSymlinkMap());
 
+			// On cPanel the workspace is served from its addon domain's document root, so the
+			// app baseUrls lose the "/<url>" path prefix ("" / "/admin"). Locally the workspace
+			// is served as a path under the master domain (root .htaccess) and keeps it.
+			$baseUrlPrefix = $this->isLocalInstallEnvironment() ? '/' . $this->url : '';
+
 			// Update the configuration files
 			foreach ($this->getConfigFilePaths() as $filePath) {
 				if (is_file($filePath)) {
+					// strtr tries the longest keys first, so "/{{URL}}" wins over "{{URL}}"
+					// inside the baseUrl templates while "{{URL}}" still covers plain uses.
 					file_put_contents($filePath, strtr(file_get_contents($filePath), [
 						'{{DB_HOST}}' => DbHelper::getDsnAttribute('host', $db) ?: 'localhost',
 						'{{DB_NAME}}' => $this->getWorkspaceDbName(),
 						'{{DB_USERNAME}}' => $db->username,
 						'{{DB_PASSWORD}}' => $db->password,
+						// The numeric workspace id (botai keeps INT primary keys).
 						'{{ID}}' => $this->id,
 						'{{NAME}}' => $this->code,
+						'/{{URL}}' => $baseUrlPrefix,
 						'{{URL}}' => $this->url,
 					]));
 				}
@@ -838,6 +926,33 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Clears the tenant application's runtime file cache, so a direct write to the tenant
+	 * database (a database update run from master, a settings change) is not masked by the
+	 * tenant's cached values. The tenant caches through TagDependency with no expiry, so
+	 * without this it would keep serving the old values.
+	 */
+	public function flushTenantCache()
+	{
+		$dir = $this->getDirectoryPath();
+		if (!$dir) {
+			return;
+		}
+		foreach (['backend', 'frontend', 'console'] as $app) {
+			$cacheDir = "{$dir}/{$app}/runtime/cache";
+			if (!is_dir($cacheDir)) {
+				continue;
+			}
+			foreach (glob("{$cacheDir}/*") ?: [] as $path) {
+				if (is_dir($path)) {
+					\yii\helpers\FileHelper::removeDirectory($path);
+				} elseif (is_file($path)) {
+					@unlink($path);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Installs the Workspace database and its directory structure.
 	 *
 	 * @return bool
@@ -855,6 +970,9 @@ class Workspace extends CommonActiveRecord
 			}
 			if (!$this->installDirectory()) {
 				throw new \Exception('Cannot create the workspace directory.');
+			}
+			if (!$this->ensureCpanelAddonDomain()) {
+				throw new \Exception('Cannot create the cPanel addon domain.');
 			}
 			if (!$this->updateCrontab()) {
 				throw new \Exception('Cannot update the crontab file.');
@@ -881,7 +999,8 @@ class Workspace extends CommonActiveRecord
 			if ($this->isLocalInstallEnvironment()) {
 				static::getDb()->createCommand("DROP DATABASE IF EXISTS `{$this->getWorkspaceDbName()}`")->execute();
 			} else {
-				Yii::$app->cPanel->uapi->Mysql->delete_database(['name' => $this->getWorkspaceDbName()]);
+				$response = Yii::$app->cPanel->uapi->Mysql->delete_database(['name' => $this->getWorkspaceDbName()]);
+				$this->logCpanelUapiFailure('Mysql::delete_database', $response);
 			}
 
 			if (!$this->updateCrontab(true)) {
@@ -912,6 +1031,292 @@ class Workspace extends CommonActiveRecord
 			$this->addError('', $e->getMessage());
 			return false;
 		}
+	}
+
+	/**
+	 * Ensures the cPanel addon domain that serves this workspace exists. The addon domain
+	 * is the workspace `domain` column (a real registrable name, e.g. "primadentalclinic.ro");
+	 * its document root is the tenant directory. No-op locally (the root .htaccess routes
+	 * the tenant instead) and when the cPanel component holds placeholder credentials.
+	 *
+	 * @return bool
+	 */
+	protected function ensureCpanelAddonDomain(): bool
+	{
+		if ($this->isLocalInstallEnvironment()) {
+			return true;
+		}
+
+		$cpanel = Yii::$app->cPanel;
+		$baseUrl = rtrim((string) ($cpanel->baseUrl ?? ''), '/');
+		$username = (string) ($cpanel->username ?? '');
+		$password = (string) ($cpanel->password ?? '');
+		$apiToken = (string) ($cpanel->apiToken ?? '');
+
+		if (empty($baseUrl) || empty($username) || (empty($password) && empty($apiToken))) {
+			return true;
+		}
+		foreach ([$baseUrl, $username, $password, $apiToken] as $value) {
+			if (stripos($value, 'CPANEL_') !== false) {
+				return true;
+			}
+		}
+
+		// The `url` column is only the path slug ("primadentalclinic"), which cPanel
+		// rejects ("must have a valid TLD label"); the addon domain needs the real domain.
+		$addonDomain = strtolower(trim((string) $this->domain));
+		if ($addonDomain === '' || strpos($addonDomain, '.') === false) {
+			$this->addError('', Yii::t('common', 'The workspace domain must be a full domain name (with TLD) to create the cPanel addon domain.'));
+			return false;
+		}
+
+		$existingDomains = array_map('strtolower', $this->getCpanelAddonDomains());
+		if (in_array($addonDomain, $existingDomains, true)) {
+			return true;
+		}
+
+		$dirPath = $this->getCpanelDirectoryPath();
+		if (empty($dirPath)) {
+			$this->addError('', Yii::t('common', 'Missing cPanel document root.'));
+			return false;
+		}
+
+		// API2 AddonDomain::addaddondomain parameters:
+		// - newdomain: the real domain with extension (workspace domain)
+		// - subdomain: the addon domain name without extension
+		// - dir: document root, relative to the account home
+		// - pass: password of the FTP user cPanel creates alongside the addon domain.
+		//   Nothing reads that account afterwards, so a fresh random secret does the job
+		//   without putting the cPanel account password on the wire (API2 carries the
+		//   parameters in the query string, i.e. into the access log).
+		$payload = [
+			'newdomain' => $addonDomain,
+			'subdomain' => $this->getCpanelSubdomain(),
+			'dir' => $dirPath,
+			'pass' => Yii::$app->security->generateRandomString(24) . 'aA1!',
+		];
+
+		$response = $this->cpanelRequestApi2('AddonDomain', 'addaddondomain', $payload);
+
+		// API2 signals two layers: event.result says the call executed, while the
+		// function's own outcome is in data[0].result/reason — a failed creation
+		// (domain limit, disabled feature, invalid domain) still has event.result = 1.
+		$cpRes = $response['cpanelresult'] ?? [];
+		$event = $cpRes['event'] ?? [];
+		$data = $cpRes['data'][0] ?? [];
+		$ok = (int) ($event['result'] ?? 0) === 1 && (int) ($data['result'] ?? 0) === 1;
+		$errText = (string) ($cpRes['error'] ?? '');
+		if ($errText === '' && (int) ($data['result'] ?? 0) !== 1) {
+			$errText = (string) ($data['reason'] ?? '');
+		}
+
+		if (!$ok) {
+			$error = $errText !== '' ? $errText : Yii::t('common', 'Unknown cPanel error.');
+
+			Yii::error([
+				'message' => 'cPanel addon domain create failed (API2).',
+				'workspace' => $this->code,
+				'payload' => array_merge($payload, ['pass' => '***']),
+				'response' => $response,
+			], 'cpanel');
+
+			$this->addError('', $error);
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Executes a cPanel API2 request.
+	 *
+	 * @param string $module
+	 * @param string $func
+	 * @param array $params
+	 * @return array|null
+	 */
+	protected function cpanelRequestApi2(string $module, string $func, array $params = []): ?array
+	{
+		$cpanel = Yii::$app->cPanel;
+		$baseUrl = rtrim((string) ($cpanel->baseUrl ?? ''), '/');
+		$username = (string) ($cpanel->username ?? '');
+		$authorization = $this->getCpanelAuthorization();
+		if ($authorization === null) {
+			return null;
+		}
+
+		$query = array_merge([
+			'cpanel_jsonapi_user' => $username,
+			'cpanel_jsonapi_apiversion' => 2,
+			'cpanel_jsonapi_module' => $module,
+			'cpanel_jsonapi_func' => $func,
+		], $params);
+
+		$url = $baseUrl . '/json-api/cpanel?' . http_build_query($query);
+
+		$client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30]);
+
+		try {
+			// http_errors off on purpose: cPanel answers a refusal with 403 AND a JSON
+			// body that names the reason, which the callers already read. Letting Guzzle
+			// throw instead would replace that with an exception whose message quotes the
+			// full request URL, secrets included.
+			$res = $client->get($url, [
+				'headers' => [
+					'Authorization' => $authorization,
+					'Accept' => 'application/json',
+				],
+				'http_errors' => false,
+			]);
+		} catch (\Throwable $e) {
+			Yii::error([
+				'message' => 'cPanel API2 request failed.',
+				'workspace' => $this->code,
+				'module' => $module,
+				'func' => $func,
+				'error' => static::redactCpanelSecrets($e->getMessage()),
+			], 'cpanel');
+
+			return null;
+		}
+
+		$json = json_decode((string) $res->getBody(), true);
+
+		return is_array($json) ? $json : null;
+	}
+
+	/**
+	 * The Authorization header value for a direct cPanel call, or null when the component
+	 * holds nothing usable. An API token is preferred over the account password: it is the
+	 * only thing that works for an account with two-factor authentication, and it keeps
+	 * the real password out of the request.
+	 *
+	 * @return string|null
+	 */
+	protected function getCpanelAuthorization(): ?string
+	{
+		$cpanel = Yii::$app->cPanel;
+
+		$token = (string) ($cpanel->apiToken ?? '');
+		$username = (string) ($cpanel->username ?? '');
+		$password = (string) ($cpanel->password ?? '');
+
+		if (empty($username)) {
+			return null;
+		}
+		if (!empty($token)) {
+			return "cpanel {$username}:{$token}";
+		}
+		if (!empty($password)) {
+			return 'Basic ' . base64_encode("{$username}:{$password}");
+		}
+
+		return null;
+	}
+
+	/**
+	 * Masks the credentials cPanel expects as query parameters, so a request URL can
+	 * be logged or shown without handing out the password with it.
+	 *
+	 * @param string $text
+	 * @return string
+	 */
+	protected static function redactCpanelSecrets(string $text): string
+	{
+		return (string) preg_replace('/\b(pass|password)=[^&\s"\']*/i', '$1=***', $text);
+	}
+
+	/**
+	 * Fetches the existing addon domains from cPanel.
+	 *
+	 * @return array
+	 */
+	protected function getCpanelAddonDomains(): array
+	{
+		$response = $this->cpanelRequest('DomainInfo/list_domains');
+		if (!$response || (int) ($response['status'] ?? 0) !== 1) {
+			Yii::error([
+				'message' => 'cPanel list domains failed.',
+				'workspace' => $this->code,
+				'response' => $response,
+			], 'cpanel');
+			return [];
+		}
+
+		$addons = $response['data']['addon_domains'] ?? [];
+		if (!is_array($addons)) {
+			return [];
+		}
+
+		return array_values(array_filter($addons));
+	}
+
+	/**
+	 * Executes a cPanel UAPI request.
+	 *
+	 * @param string $endpoint e.g. "DomainInfo/list_domains"
+	 * @param array $params
+	 * @return array|null
+	 */
+	protected function cpanelRequest(string $endpoint, array $params = []): ?array
+	{
+		$cpanel = Yii::$app->cPanel;
+		$baseUrl = rtrim((string) ($cpanel->baseUrl ?? ''), '/');
+		if (empty($baseUrl) || ($authorization = $this->getCpanelAuthorization()) === null) {
+			return null;
+		}
+
+		$client = new Client(['transport' => 'yii\httpclient\CurlTransport']);
+		$request = $client->createRequest()
+			->setMethod('GET')
+			->setUrl("{$baseUrl}/execute/" . ltrim($endpoint, '/'))
+			->setData($params)
+			->setHeaders([
+				'Authorization' => $authorization,
+				'Accept' => 'application/json',
+			]);
+
+		$response = $request->send();
+		if (!$response->isOk) {
+			Yii::error([
+				'message' => 'cPanel request failed.',
+				'endpoint' => $endpoint,
+				'params' => $params,
+				'statusCode' => $response->getStatusCode(),
+				'body' => $response->getContent(),
+			], 'cpanel');
+			return null;
+		}
+
+		return $response->getData();
+	}
+
+	/**
+	 * Gets the cPanel document root for the workspace, relative to the account home:
+	 * public_html/workspaces/<domain>.
+	 *
+	 * @return string
+	 */
+	protected function getCpanelDirectoryPath(): string
+	{
+		if ($this->getDirectoryName() === null) {
+			return '';
+		}
+
+		return 'public_html/' . $this->getRelativeDirectoryPath();
+	}
+
+	/**
+	 * Gets the cPanel addon domain name (the name without extension), e.g.
+	 * "primadentalclinic" for the domain "primadentalclinic.ro".
+	 *
+	 * @return string
+	 */
+	protected function getCpanelSubdomain(): string
+	{
+		$domain = strtolower($this->getDirectoryName() ?: (string) $this->url);
+
+		return explode('.', $domain, 2)[0];
 	}
 	//endregion Workspace Config
 }
