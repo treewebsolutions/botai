@@ -73,7 +73,9 @@ return [
 				'name' => '_identity',
 				'httpOnly' => true,
 			],
-			'loginUrl' => '/',
+			// A route, not an absolute path: the tenant backend is served under /<url>/admin
+			// locally, so '/' would send guests to the master site instead of this login page.
+			'loginUrl' => ['/site/login'],
 		],
 		'session' => [
 			'name' => 'BOTAISESSID',

@@ -24,6 +24,7 @@ Options FollowSymlinks
 	RewriteRule ^api/?(.*)$ master/api/public/$ [L]
 
 	# BEGIN Workspace Rules
+	RewriteRule ^tws/?(.*)$ workspaces/tws/$1 [NC,L]
 	# Managed by master (Workspace::updateHtaccess()). One rule per installed tenant, e.g.:
 	#RewriteRule ^example/?(.*)$ workspaces/example.ro/$1 [NC,L]
 	# END Workspace Rules
