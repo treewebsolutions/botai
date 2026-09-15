@@ -22,8 +22,9 @@ dist/
 # Composer lock files (resolved per environment)
 composer.lock
 
-# Database dumps (may contain API keys and credentials)
-**/_database/
+# Database dumps (may contain API keys and credentials); the Workbench models are always tracked
+**/_database/*
+!**/_database/*.mwb
 # Workspace install seed data: shared (install/db/) and per-type (install/db/<type>/)
 **/install/db/_05_data.sql
 **/install/db/*/_05_data.sql
