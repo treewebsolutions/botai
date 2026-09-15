@@ -18,6 +18,10 @@ Options FollowSymlinks
 
     # DOCUMENTATION
     RewriteRule ^documentation/?(.*)$ documentation/$1 [NC,L]
+
+    # PRESENTATION (static Bootstrap page + Markdown docs)
+    RewriteRule ^docs/?$ docs/index.html [NC,L]
+    RewriteRule ^docs/(.+)$ docs/$1 [NC,L]
 	
 	# REST API
 	RewriteCond %{REQUEST_URI} /(api/v\d+)

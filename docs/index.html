@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>BotAI — Asistentul tău virtual, alimentat de AI</title>
+	<meta name="description" content="BotAI răspunde vizitatorilor site-ului tău, non-stop, folosind doar informațiile de pe paginile tale. Se instalează într-un minut, fără cunoștințe tehnice.">
+	<link rel="icon" href="assets/img/favicon.ico">
+	<meta property="og:title" content="BotAI — Asistentul tău virtual, alimentat de AI">
+	<meta property="og:description" content="Un asistent care cunoaște site-ul tău și răspunde clienților în timp real, zi și noapte.">
+	<meta property="og:image" content="assets/img/logo.png">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Mulish:wght@700;800&display=swap" rel="stylesheet">
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+	<link href="assets/css/presentation.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+	<div class="container">
+		<a class="navbar-brand" href="#top"><img src="assets/img/logo.png" alt="BotAI"></a>
+		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Meniu">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="collapse navbar-collapse" id="nav">
+			<ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+				<li class="nav-item"><a class="nav-link" href="#beneficii">Beneficii</a></li>
+				<li class="nav-item"><a class="nav-link" href="#cum-functioneaza">Cum funcționează</a></li>
+				<li class="nav-item"><a class="nav-link" href="#functionalitati">Ce știe să facă</a></li>
+				<li class="nav-item"><a class="nav-link" href="#pentru-cine">Pentru cine</a></li>
+				<li class="nav-item"><a class="nav-link" href="#intrebari">Întrebări</a></li>
+				<li class="nav-item ms-lg-2"><a class="btn btn-primary btn-sm px-3" href="#contact">Vreau BotAI pe site</a></li>
+			</ul>
+		</div>
+	</div>
+</nav>
+
+<header id="top" class="hero">
+	<img class="hero-symbol" src="assets/img/logo-symbol.png" alt="">
+	<div class="container">
+		<div class="row align-items-center g-5">
+			<div class="col-lg-6">
+				<span class="badge rounded-pill text-bg-light border mb-3">
+					<i class="bi bi-stars text-brand-yellow"></i> Asistent AI pentru site-ul tău
+				</span>
+				<h1 class="display-5 mb-3">Asistentul tău virtual, <span class="text-brand-blue">alimentat</span> de <span class="text-brand-red">AI</span></h1>
+				<p class="lead mb-4">
+					BotAI răspunde vizitatorilor site-ului tău la orice oră, politicos și la obiect,
+					folosind doar informațiile de pe paginile tale. Nu trebuie să scrii nimic, nu trebuie
+					să îl „înveți”: citește singur site-ul și e gata de lucru.
+				</p>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-primary btn-lg px-4" href="#contact"><i class="bi bi-chat-heart-fill me-1"></i> Vreau BotAI pe site</a>
+					<a class="btn btn-outline-primary btn-lg px-4" href="#cum-functioneaza">Cum funcționează</a>
+				</div>
+				<div class="d-flex flex-wrap gap-4 mt-4 small text-secondary">
+					<span><i class="bi bi-check-circle-fill text-brand-blue me-1"></i> Gata în câteva minute</span>
+					<span><i class="bi bi-check-circle-fill text-brand-red me-1"></i> Răspunde non-stop</span>
+					<span><i class="bi bi-check-circle-fill text-brand-yellow me-1"></i> Fără cunoștințe tehnice</span>
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="chat-mock">
+					<div class="chat-mock-header">
+						<img src="assets/img/logo-symbol.png" alt=""> Clinica ta
+						<span class="ms-auto opacity-75"><i class="bi bi-chevron-down"></i></span>
+					</div>
+					<div class="chat-mock-body">
+						<div class="chat-bubble user">Bună! Ce program aveți sâmbăta?</div>
+						<div class="chat-bubble bot">
+							Sâmbăta suntem deschiși între <strong>09:00 și 14:00</strong>. Pentru o programare
+							ne poți suna la numărul de pe pagina de contact sau îmi poți lăsa aici datele tale.
+							<span class="source"><i class="bi bi-link-45deg"></i> Informație din pagina „Program și contact”</span>
+						</div>
+						<div class="chat-bubble user">Faceți și implanturi?</div>
+						<div class="chat-bubble bot">
+							Da. Oferim implanturi dentare, cu consultație inițială gratuită și plan de tratament
+							personalizat. Vrei să îți spun mai multe despre etape sau despre prețuri?
+							<span class="source"><i class="bi bi-link-45deg"></i> Informație din pagina „Implantologie”</span>
+						</div>
+					</div>
+					<div class="chat-mock-input">
+						<span class="field">Scrie un mesaj...</span>
+						<span class="dot bg-brand-blue"><i class="bi bi-mic-fill"></i></span>
+						<span class="dot bg-brand-yellow"><i class="bi bi-envelope-fill"></i></span>
+						<span class="dot bg-brand-red"><i class="bi bi-send-fill"></i></span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</header>
+
+<section id="beneficii" class="section">
+	<div class="container">
+		<div class="text-center">
+			<h2 class="section-title">De ce ai nevoie de BotAI</h2>
+			<p class="section-subtitle">Vizitatorii au întrebări. Dacă nu primesc răspuns pe loc, pleacă. BotAI le răspunde în locul tău, exact cum ai face-o tu.</p>
+		</div>
+		<div class="row g-4">
+			<div class="col-md-6 col-lg-3">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-blue"><i class="bi bi-moon-stars-fill"></i></div>
+					<h5>Răspunde și când tu nu poți</h5>
+					<p class="text-secondary mb-0">Seara, în weekend, de sărbători. Clienții primesc informația de care au nevoie fără să aștepte până a doua zi.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-3">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-red"><i class="bi bi-telephone-x-fill"></i></div>
+					<h5>Mai puține telefoane repetitive</h5>
+					<p class="text-secondary mb-0">Program, prețuri, adresă, servicii, condiții. Întrebările care se repetă zilnic primesc răspuns automat, iar echipa ta rămâne liberă pentru ce contează.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-3">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-yellow"><i class="bi bi-shield-check"></i></div>
+					<h5>Spune doar ce e pe site-ul tău</h5>
+					<p class="text-secondary mb-0">Nu inventează. Dacă informația nu există pe site, o spune sincer și îndrumă vizitatorul să te contacteze.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-3">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-blue"><i class="bi bi-arrow-repeat"></i></div>
+					<h5>Se actualizează singur</h5>
+					<p class="text-secondary mb-0">Ai schimbat programul sau ai adăugat un serviciu nou pe site? BotAI observă și răspunde cu informația nouă, fără nicio intervenție.</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="cum-functioneaza" class="section bg-light-soft">
+	<div class="container text-center">
+		<h2 class="section-title">Cum funcționează</h2>
+		<p class="section-subtitle">Trei pași simpli. Tu nu trebuie să faci nimic tehnic.</p>
+		<div class="row g-4">
+			<div class="col-md-4">
+				<div class="step-number bg-brand-blue">1</div>
+				<h4>Citește site-ul tău</h4>
+				<p class="text-secondary mb-0">BotAI parcurge paginile site-ului tău și reține tot ce este important: servicii, prețuri, program, adresă, întrebări frecvente.</p>
+			</div>
+			<div class="col-md-4">
+				<div class="step-number bg-brand-yellow">2</div>
+				<h4>Își construiește „memoria”</h4>
+				<p class="text-secondary mb-0">Din paginile citite își face o bază de cunoștințe proprie, pe care o ține la zi automat, ori de câte ori site-ul se schimbă.</p>
+			</div>
+			<div class="col-md-4">
+				<div class="step-number bg-brand-red">3</div>
+				<h4>Vorbește cu vizitatorii</h4>
+				<p class="text-secondary mb-0">O bulă de chat discretă apare pe site. Vizitatorul întreabă, BotAI răspunde în limba lui și ține minte firul discuției.</p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="functionalitati" class="section">
+	<div class="container">
+		<div class="text-center">
+			<h2 class="section-title">Ce știe să facă</h2>
+			<p class="section-subtitle">Totul este gândit pentru vizitatorul tău și pentru tine, cel care administrează site-ul.</p>
+		</div>
+		<div class="row g-4">
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-blue"><i class="bi bi-chat-dots-fill"></i></div>
+					<h5>Chat discret, pe orice pagină</h5>
+					<p class="text-secondary mb-0">O bulă în colțul site-ului, în culorile tale. Se deschide la un clic, se poate mări, iar conversația rămâne acolo și dacă vizitatorul revine mai târziu.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-red"><i class="bi bi-mic-fill"></i></div>
+					<h5>Vorbește și ascultă</h5>
+					<p class="text-secondary mb-0">Vizitatorul poate pune întrebarea cu vocea, iar răspunsul poate fi citit cu o voce naturală. Util pe telefon și pentru persoanele care preferă să nu tasteze.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-yellow"><i class="bi bi-envelope-paper-fill"></i></div>
+					<h5>Conversația, trimisă pe email</h5>
+					<p class="text-secondary mb-0">Vizitatorul își poate trimite discuția pe email dintr-un singur clic, ca să aibă răspunsurile la îndemână mai târziu.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-blue"><i class="bi bi-translate"></i></div>
+					<h5>Răspunde în limba vizitatorului</h5>
+					<p class="text-secondary mb-0">Română, engleză sau alte limbi: BotAI răspunde în limba în care i se scrie, chiar dacă site-ul tău este într-o singură limbă.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-red"><i class="bi bi-person-lines-fill"></i></div>
+					<h5>Vezi ce te întreabă clienții</h5>
+					<p class="text-secondary mb-0">Toate conversațiile sunt păstrate în panoul tău de administrare. Afli ce îi interesează pe vizitatori și ce lipsește de pe site.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-4">
+				<div class="card feature-card p-4">
+					<div class="feature-icon bg-brand-yellow"><i class="bi bi-sliders"></i></div>
+					<h5>Tonul și stilul, alese de tine</h5>
+					<p class="text-secondary mb-0">Îi spui cum să se prezinte, cât de formal să fie și la ce să insiste. Culorile, iconițele și textele bulei de chat se potrivesc cu site-ul tău.</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="pentru-cine" class="section bg-light-soft">
+	<div class="container">
+		<div class="text-center">
+			<h2 class="section-title">Pentru cine este</h2>
+			<p class="section-subtitle">Orice afacere care primește întrebări prin site. Câteva exemple din practică:</p>
+		</div>
+		<div class="row g-4">
+			<div class="col-md-6 col-lg-3">
+				<div class="arch-box p-4">
+					<div class="feature-icon bg-brand-blue"><i class="bi bi-heart-pulse-fill"></i></div>
+					<h5>Clinici și cabinete</h5>
+					<p class="text-secondary mb-0">„Ce program aveți?”, „Cât costă o consultație?”, „Tratați și copii?”. Pacienții primesc răspuns imediat și știu cum să se programeze.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-3">
+				<div class="arch-box p-4">
+					<div class="feature-icon bg-brand-red"><i class="bi bi-car-front-fill"></i></div>
+					<h5>Service-uri și dealeri auto</h5>
+					<p class="text-secondary mb-0">Servicii oferite, mărci acceptate, acte necesare, program. Clientul află tot înainte să sune sau să vină.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-3">
+				<div class="arch-box p-4">
+					<div class="feature-icon bg-brand-yellow"><i class="bi bi-bag-heart-fill"></i></div>
+					<h5>Magazine și prestatori</h5>
+					<p class="text-secondary mb-0">Condiții de livrare, retur, garanție, zone acoperite. Mai puține coșuri abandonate din cauza unei nelămuriri.</p>
+				</div>
+			</div>
+			<div class="col-md-6 col-lg-3">
+				<div class="arch-box p-4">
+					<div class="feature-icon bg-brand-blue"><i class="bi bi-building-fill"></i></div>
+					<h5>Firme cu mai multe site-uri</h5>
+					<p class="text-secondary mb-0">Fiecare site primește asistentul lui, cu informațiile lui, administrat dintr-un singur loc.</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="instalare" class="section">
+	<div class="container">
+		<div class="row align-items-center g-5">
+			<div class="col-lg-6">
+				<h2 class="section-title">Instalare într-un minut</h2>
+				<p class="text-secondary">Nu ai nevoie de programator. Primești de la noi un cod scurt, de câteva rânduri, pe care îl adaugi în site sau ni-l lași nouă să îl adăugăm. Din acel moment, bula de chat apare pe toate paginile.</p>
+				<ul class="list-unstyled text-secondary">
+					<li class="mb-2"><i class="bi bi-check2-circle text-brand-blue me-2"></i>Funcționează pe orice site: WordPress, magazin online, site de prezentare</li>
+					<li class="mb-2"><i class="bi bi-check2-circle text-brand-red me-2"></i>Nu modifică nimic din site-ul tău și nu îl încetinește</li>
+					<li class="mb-2"><i class="bi bi-check2-circle text-brand-yellow me-2"></i>Poți alege dacă bula pornește închisă sau deschisă, mică sau extinsă</li>
+				</ul>
+			</div>
+			<div class="col-lg-6">
+				<div class="card feature-card p-4">
+					<h5 class="mb-3"><i class="bi bi-list-check text-brand-blue me-2"></i>Ce se întâmplă după ce ne contactezi</h5>
+					<ol class="text-secondary mb-0 ps-3">
+						<li class="mb-2">Îți creăm contul și asistentul pentru site-ul tău.</li>
+						<li class="mb-2">BotAI citește site-ul; în câteva minute este pregătit.</li>
+						<li class="mb-2">Îl testezi într-o pagină de probă și îi ajustezi tonul, culorile și mesajul de întâmpinare.</li>
+						<li class="mb-0">Adaugi codul pe site (sau o facem noi). Gata: asistentul răspunde clienților.</li>
+					</ol>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="intrebari" class="section bg-light-soft">
+	<div class="container">
+		<div class="text-center">
+			<h2 class="section-title">Întrebări frecvente</h2>
+			<p class="section-subtitle">Ce ne întreabă de obicei clienții înainte să pornească.</p>
+		</div>
+		<div class="accordion mx-auto" id="faq" style="max-width: 860px;">
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">Trebuie să scriu eu răspunsurile?</button>
+				</h2>
+				<div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faq">
+					<div class="accordion-body text-secondary">Nu. BotAI folosește ceea ce este deja pe site-ul tău. Cu cât site-ul este mai complet, cu atât răspunsurile sunt mai bune. Dacă vrei, îi poți da în plus câteva indicații despre cum să se poarte.</div>
+				</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">Ce se întâmplă dacă nu știe răspunsul?</button>
+				</h2>
+				<div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faq">
+					<div class="accordion-body text-secondary">Spune sincer că nu are informația și îndrumă vizitatorul spre pagina de contact sau spre telefon. Nu inventează răspunsuri.</div>
+				</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">Dacă schimb ceva pe site, trebuie să anunț pe cineva?</button>
+				</h2>
+				<div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faq">
+					<div class="accordion-body text-secondary">Nu. Site-ul este recitit periodic, iar paginile noi sau modificate intră automat în „memoria” asistentului.</div>
+				</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">Pot vedea ce au întrebat vizitatorii?</button>
+				</h2>
+				<div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faq">
+					<div class="accordion-body text-secondary">Da. În panoul tău de administrare ai toate conversațiile, cu data și mesajele lor. E cea mai bună sursă ca să afli ce lipsește de pe site.</div>
+				</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">Se potrivește cu designul site-ului meu?</button>
+				</h2>
+				<div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faq">
+					<div class="accordion-body text-secondary">Da. Culorile, iconițele, textele și poziția bulei de chat se pot personaliza, ca să pară parte din site-ul tău.</div>
+				</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">Am mai multe site-uri. Am nevoie de mai multe conturi?</button>
+				</h2>
+				<div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faq">
+					<div class="accordion-body text-secondary">Nu. Fiecare site primește propriul asistent, cu informațiile lui, iar tu le administrezi pe toate din același cont.</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="contact" class="section">
+	<div class="container">
+		<div class="row justify-content-center">
+			<div class="col-lg-8 text-center">
+				<img src="assets/img/logo-symbol.png" alt="" height="64" class="mb-3">
+				<h2 class="section-title">Pune BotAI pe site-ul tău</h2>
+				<p class="section-subtitle">Îți pregătim asistentul, îl testezi împreună cu noi și îl pornești când ești mulțumit. Fără angajamente înainte să îl vezi la lucru.</p>
+				<div class="d-flex flex-wrap justify-content-center gap-2">
+					<a class="btn btn-primary btn-lg px-4" href="/contact"><i class="bi bi-chat-heart-fill me-1"></i> Contactează-ne</a>
+					<a class="btn btn-outline-primary btn-lg px-4" href="/">Deschide aplicația</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<footer class="py-4">
+	<div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+		<a href="#top"><img src="assets/img/logo.png" alt="BotAI" height="26"></a>
+		<span>&copy; <span id="year"></span> BotAI &middot; Tree Web Solutions</span>
+		<span><a href="/">Aplicația</a> &middot; <a href="/documentation">Documentație</a></span>
+	</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+	document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
