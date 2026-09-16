@@ -2,6 +2,7 @@
 
 namespace common\services;
 
+use common\components\PageUrlClassifier;
 use common\models\Assistant;
 use common\models\Integration;
 use common\models\KnowledgeBase;
@@ -772,6 +773,11 @@ class OpenAiRecordVectorStoreService
 			'status' => (int) $page->status,
 			'website' => mb_substr(trim((string) $page->website), 0, 500),
 			'url' => mb_substr(trim((string) $page->url), 0, 500),
+			// A scraped page carries no category of its own, the way a listing does, but
+			// its path usually says what it is: /servicii/, /despre-noi/, /contact/. Sent
+			// as an attribute so an answer can be narrowed to the part of the site that
+			// would hold it. See {@see PageUrlClassifier}.
+			'category' => PageUrlClassifier::classify($page->url),
 		];
 	}
 
