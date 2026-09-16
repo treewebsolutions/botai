@@ -5,17 +5,22 @@
 use kartik\growl\GrowlAsset;
 use frontend\modules\embed\assets\EmbedAsset;
 
-// Load variables.css from uploads directory FIRST (before EmbedAsset)
-$workspace = \common\models\master\Workspace::findOne(end(explode('-', Yii::$app->id)));
-if ($workspace) {
-	$variablesCssPath = Yii::getAlias('@workspaces') . '/' . $workspace->id . '/uploads/variables.css';
-	if (file_exists($variablesCssPath)) {
-		// Construct URL: {hostInfo}/{workspace_url}/uploads/variables.css
-		$workspaceUrl = rtrim(Yii::$app->request->hostInfo . '/' . $workspace->url, '/');
-		$variablesCssUrl = $workspaceUrl . '/uploads/variables.css';
-		// Register BEFORE EmbedAsset so variables are available when embed.css loads
-		$this->registerCssFile($variablesCssUrl, ['position' => \yii\web\View::POS_HEAD]);
-	}
+// The style saved in the interface settings, written to the tenant's own uploads
+// directory by InterfaceSettingForm::saveVariablesCss(). Registered before EmbedAsset so
+// the variables are defined by the time embed.css reads them.
+//
+// This looked for workspaces/<numeric id>/uploads/variables.css. Tenant directories are
+// named after the domain (or the URL slug), not the id, and the writer already said so -
+// so file_exists() was always false and the saved style never reached the widget.
+// @uploads is the tenant's own directory, which is the same place the writer uses.
+$variablesCssPath = Yii::getAlias('@uploads') . '/variables.css';
+if (is_file($variablesCssPath)) {
+	// baseUrl is the tenant's public prefix: "/<url>" served as a path under the master
+	// host, "" on its own domain. The file name never changes, so its modification time
+	// goes in the query string - otherwise a style saved in settings stays invisible
+	// behind the browser cache.
+	$variablesCssUrl = Yii::$app->request->baseUrl . '/uploads/variables.css?v=' . filemtime($variablesCssPath);
+	$this->registerCssFile($variablesCssUrl, ['position' => \yii\web\View::POS_HEAD]);
 }
 
 EmbedAsset::register($this);
