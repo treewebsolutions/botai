@@ -314,7 +314,7 @@ class GeneralSettingForm extends Setting
         if (!$scheduledTask) {
             $scheduledTask = new ScheduledTask();
         }
-        $scheduledTask->cron_expression = '0 0 * * * *';
+        $scheduledTask->cron_expression = '0 0 * * *';
         $scheduledTask->app_command = 'backup/run';
         $scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
         $scheduledTask->resource_key = $this->id;
@@ -340,7 +340,7 @@ class GeneralSettingForm extends Setting
         if (!$scheduledTask) {
             $scheduledTask = new ScheduledTask();
         }
-        $scheduledTask->cron_expression = '0 0 * * * *';
+        $scheduledTask->cron_expression = '0 0 * * *';
         $scheduledTask->app_command = 'backup/remove';
         $scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
         $scheduledTask->resource_key = $this->id;
@@ -366,7 +366,7 @@ class GeneralSettingForm extends Setting
 		if (!$scheduledTask) {
 			$scheduledTask = new ScheduledTask();
 		}
-		$scheduledTask->cron_expression = '* * * * * *';
+		$scheduledTask->cron_expression = '* * * * *';
 		$scheduledTask->app_command = 'scraper/run';
 		$scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
 		$scheduledTask->resource_key = $this->id;

@@ -37,7 +37,7 @@ class FollowupMarketingCampaign extends MarketingCampaign
 			$scheduledTask->type = ScheduledTask::TYPE_APP;
 			$scheduledTask->status = ScheduledTask::STATUS_INACTIVE;
 		}
-		$scheduledTask->cron_expression = '* * * * * *';
+		$scheduledTask->cron_expression = '* * * * *';
 		$scheduledTask->app_command = implode(' ', array_filter([
 			'action' => 'marketing-campaign/run',
 			'id' => $this->id,

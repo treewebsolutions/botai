@@ -108,6 +108,22 @@ CREATE TABLE IF NOT EXISTS `workspace_database_update_log` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── PASUL 3. expresiile cron, aduse la 5 câmpuri ──────────────────────────────
+--
+-- `dragonmantank/cron-expression` v3 acceptă exact 5 câmpuri: minut, oră, zi,
+-- lună, zi-din-săptămână. Toate rândurile au fost scrise cu 6, cu un câmp de an
+-- la sfârşit, aşa că `schedule/run` murea la prima sarcină cu
+-- „6 is not a valid position" — şi nu rula niciuna. Nimic programat n-a pornit
+-- vreodată: nici scraper-ul, nici backup-urile.
+--
+-- Taie al şaselea câmp doar de pe rândurile care îl au, deci se poate rula de
+-- câte ori vrei. `* * * * * *` devine `* * * * *`, `0 0 * * * *` devine
+-- `0 0 * * *`.
+
+UPDATE `scheduled_task`
+SET `cron_expression` = SUBSTRING_INDEX(`cron_expression`, ' ', 5)
+WHERE LENGTH(`cron_expression`) - LENGTH(REPLACE(`cron_expression`, ' ', '')) = 5;
+
 -- ── Verificare înainte de scriptul de tenant ───────────────────────────────
 --
 --   SELECT id, name, type, `default`, status, CHAR_LENGTH(data) AS len

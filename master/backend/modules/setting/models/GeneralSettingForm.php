@@ -444,7 +444,7 @@ class GeneralSettingForm extends Setting
 		if (!$scheduledTask) {
 			$scheduledTask = new ScheduledTask();
 		}
-		$scheduledTask->cron_expression = '0 0 * * * *';
+		$scheduledTask->cron_expression = '0 0 * * *';
 		$scheduledTask->app_command = 'integration/run';
 		$scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
 		$scheduledTask->resource_key = $this->id;
@@ -470,7 +470,7 @@ class GeneralSettingForm extends Setting
 		if (!$scheduledTask) {
 			$scheduledTask = new ScheduledTask();
 		}
-		$scheduledTask->cron_expression = '0/10 * * * * *';
+		$scheduledTask->cron_expression = '*/10 * * * *';
 		$scheduledTask->app_command = 'e-invoice/upload';
 		$scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
 		$scheduledTask->resource_key = $this->id;
@@ -496,7 +496,7 @@ class GeneralSettingForm extends Setting
 		if (!$scheduledTask) {
 			$scheduledTask = new ScheduledTask();
 		}
-		$scheduledTask->cron_expression = '0/10 * * * * *';
+		$scheduledTask->cron_expression = '*/10 * * * *';
 		$scheduledTask->app_command = 'e-invoice/verify';
 		$scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
 		$scheduledTask->resource_key = $this->id;

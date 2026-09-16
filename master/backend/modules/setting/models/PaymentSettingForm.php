@@ -192,7 +192,7 @@ class PaymentSettingForm extends Setting
 		if (!$scheduledTask) {
 			$scheduledTask = new ScheduledTask();
 		}
-		$scheduledTask->cron_expression = '* * * * * *';
+		$scheduledTask->cron_expression = '* * * * *';
 		$scheduledTask->app_command = 'payment/run';
 		$scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
 		$scheduledTask->resource_key = $this->id;
@@ -218,7 +218,7 @@ class PaymentSettingForm extends Setting
 		if (!$scheduledTask) {
 			$scheduledTask = new ScheduledTask();
 		}
-		$scheduledTask->cron_expression = '* * * * * *';
+		$scheduledTask->cron_expression = '* * * * *';
 		$scheduledTask->app_command = 'subscription/renew-features-quota';
 		$scheduledTask->resource = __CLASS__ . '::' . __FUNCTION__;
 		$scheduledTask->resource_key = $this->id;

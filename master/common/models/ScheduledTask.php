@@ -238,7 +238,6 @@ class ScheduledTask extends CommonActiveRecord
 			self::CYCLE_DAY	=> '*',
 			self::CYCLE_MONTH => '*',
 			self::CYCLE_WEEK => '*',
-			self::CYCLE_YEAR => '*',
 		];
 
 		if (!is_array($at)) {
@@ -283,7 +282,8 @@ class ScheduledTask extends CommonActiveRecord
 				$expression[self::CYCLE_HOUR] = $at[self::CYCLE_HOUR] ?: 0;
 				$expression[self::CYCLE_DAY] = $at[self::CYCLE_DAY] ?: 1;
 				$expression[self::CYCLE_MONTH] = $at[self::CYCLE_MONTH] ?: 1;
-				$expression[self::CYCLE_YEAR] = $at[self::CYCLE_YEAR] ? "*/{$at[self::CYCLE_YEAR]}" : '*';
+				// A yearly task is the first of January; cron has no year field, so
+				// "every N years" cannot be said here and is not offered.
 				break;
 			default:
 				break;
