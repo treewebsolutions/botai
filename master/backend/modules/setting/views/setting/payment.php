@@ -135,7 +135,7 @@ $this->params['breadcrumbs'] = [
 		                        </div>
 		                        <div class="col-lg-6">
 			                        <?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
-			                        <?= $form->field($model, 'stripeWebhookIPNKey', ['template' => $secretFieldTemplate])->passwordInput()->hint(Yii::t('backend', 'The Webhook key.') . ' ' . Yii::t('common', 'Example') . ': whsec_fV9KeJMHDro7RsMulaYBwZNH1bbUFPBC') ?>
+			                        <?= $form->field($model, 'stripeWebhookIPNKey', ['template' => $secretFieldTemplate])->passwordInput()->hint(Yii::t('backend', 'The Webhook key.') . ' ' . Yii::t('common', 'Example') . ': whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') ?>
 		                        </div>
 	                        </div>
 	                        <div class="row">
