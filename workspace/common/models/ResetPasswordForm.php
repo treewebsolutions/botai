@@ -14,6 +14,11 @@ class ResetPasswordForm extends Model
 	public $password;
 
 	/**
+	 * @var string The new password confirm.
+	 */
+	public $password_confirm;
+
+	/**
 	 * @var User The User model.
 	 */
 	private $_user;
@@ -46,8 +51,21 @@ class ResetPasswordForm extends Model
 	public function rules()
 	{
 		return [
-			['password', 'required'],
-			['password', 'string', 'min' => 6],
+			[['password', 'password_confirm'], 'required'],
+			[['password', 'password_confirm'], 'trim'],
+			[['password', 'password_confirm'], 'string', 'min' => 6, 'max' => 255],
+			['password_confirm', 'compare', 'compareAttribute' => 'password', 'message' => Yii::t('common', 'Passwords don\'t match.')],
+		];
+	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function attributeLabels()
+	{
+		return [
+			'password' => Yii::t('label', 'New Password'),
+			'password_confirm' => Yii::t('label', 'Confirm New Password'),
 		];
 	}
 

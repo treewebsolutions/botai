@@ -21,6 +21,11 @@ class ResetPasswordForm extends Model
 	public $password;
 
 	/**
+	 * @var string The new password confirm.
+	 */
+	public $password_confirm;
+
+	/**
 	 * @var string The honeypot field.
 	 */
 	public $workEmail;
@@ -42,9 +47,10 @@ class ResetPasswordForm extends Model
 	public function rules()
 	{
 		return [
-			[['token', 'password'], 'required'],
-			[['token', 'password'], 'trim'],
-			['password', 'string', 'min' => 6, 'max' => 255],
+			[['token', 'password', 'password_confirm'], 'required'],
+			[['token', 'password', 'password_confirm'], 'trim'],
+			[['password', 'password_confirm'], 'string', 'min' => 6, 'max' => 255],
+			['password_confirm', 'compare', 'compareAttribute' => 'password', 'message' => Yii::t('common', 'Passwords don\'t match.')],
 			['workEmail', 'safe'],
             ['captchaResponse', 'safe'],
         ];
@@ -57,7 +63,7 @@ class ResetPasswordForm extends Model
 	{
 		return [
 			self::SCENARIO_TOKEN => ['token', 'workEmail'],
-			self::SCENARIO_PASSWORD => ['password', 'workEmail'],
+			self::SCENARIO_PASSWORD => ['password', 'password_confirm', 'workEmail'],
 		];
 	}
 
@@ -69,6 +75,7 @@ class ResetPasswordForm extends Model
 		return [
 			'token' => Yii::t('label', 'Password Reset Code'),
 			'password' => Yii::t('label', 'New Password'),
+			'password_confirm' => Yii::t('label', 'Confirm New Password'),
 		];
 	}
 
