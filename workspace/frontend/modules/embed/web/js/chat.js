@@ -1,3 +1,109 @@
+/**
+ * Markdown output is not safe to inject as-is.
+ *
+ * The widget renders assistant replies inside the tenant's own origin, on the
+ * customer's site, and the reply is model output steered by the knowledge base
+ * and by whatever the visitor types - so an indirect prompt injection is an XSS
+ * vector. marked (v15) deliberately performs no sanitisation: it passes raw
+ * <script>, inline event handlers and `javascript:` / `data:` URLs straight
+ * through.
+ *
+ * Everything below runs over an inert document parsed by DOMParser, so no
+ * script, image or iframe is ever fetched or executed while we inspect it. Only
+ * the elements markdown can legitimately produce survive, with only the
+ * attributes those elements need, and links are pinned to safe schemes.
+ */
+const MARKDOWN_ALLOWED_TAGS = {
+	a: ['href', 'title'],
+	img: ['src', 'alt', 'title'],
+	p: [], br: [], hr: [],
+	strong: [], b: [], em: [], i: [], s: [], del: [], ins: [], mark: [],
+	code: [], pre: [], blockquote: [], span: [],
+	ul: [], ol: ['start'], li: [],
+	h1: [], h2: [], h3: [], h4: [], h5: [], h6: [],
+	table: [], thead: [], tbody: [], tfoot: [], tr: [],
+	th: ['align'], td: ['align'],
+};
+
+// Anything not absolute is resolved against the widget's own origin, so the
+// relative forms are safe; the dangerous part is an explicit hostile scheme.
+const MARKDOWN_SAFE_URL = /^(?:https?:|mailto:|tel:|#|\/|\.\.?\/|[^a-z0-9+.-]|[a-z0-9+.-]*[^a-z0-9+.:-])/i;
+
+function isSafeUrl(value) {
+	const url = String(value == null ? '' : value).trim();
+	if (url === '') {
+		return false;
+	}
+	// Strip characters a browser ignores when resolving the scheme, so
+	// "java\tscript:" and "  javascript:" cannot slip past the test.
+	const normalised = url.replace(/[\u0000-\u0020]/g, '');
+	const scheme = normalised.match(/^([a-z][a-z0-9+.-]*):/i);
+	if (!scheme) {
+		return true; // relative, fragment or protocol-relative path
+	}
+	return ['http', 'https', 'mailto', 'tel'].indexOf(scheme[1].toLowerCase()) !== -1;
+}
+
+function sanitizeMarkdownHtml(html) {
+	const doc = new DOMParser().parseFromString(String(html == null ? '' : html), 'text/html');
+	const walk = (node) => {
+		// Copy the list first: the loop reparents and removes as it goes.
+		Array.prototype.slice.call(node.childNodes).forEach((child) => {
+			if (child.nodeType === Node.TEXT_NODE) {
+				return;
+			}
+			if (child.nodeType !== Node.ELEMENT_NODE) {
+				child.remove(); // comments, CDATA, processing instructions
+				return;
+			}
+
+			const tag = child.tagName.toLowerCase();
+			const allowedAttributes = MARKDOWN_ALLOWED_TAGS[tag];
+
+			if (!allowedAttributes) {
+				// Keep what the author wrote, drop the markup carrying it -
+				// except for tags whose content is itself the payload.
+				if (['script', 'style', 'iframe', 'object', 'embed', 'template', 'noscript', 'svg', 'math'].indexOf(tag) !== -1) {
+					child.remove();
+				} else {
+					walk(child);
+					child.replaceWith(...child.childNodes);
+				}
+				return;
+			}
+
+			Array.prototype.slice.call(child.attributes).forEach((attribute) => {
+				const name = attribute.name.toLowerCase();
+				if (allowedAttributes.indexOf(name) === -1) {
+					child.removeAttribute(attribute.name);
+					return;
+				}
+				if ((name === 'href' || name === 'src') && !isSafeUrl(attribute.value)) {
+					child.removeAttribute(attribute.name);
+				}
+			});
+
+			if (tag === 'a') {
+				// The widget is framed on someone else's page; never hand the
+				// opener over to a link the model produced.
+				child.setAttribute('rel', 'nofollow noopener noreferrer');
+				child.setAttribute('target', '_blank');
+			}
+
+			walk(child);
+		});
+	};
+	walk(doc.body);
+	return doc.body.innerHTML;
+}
+
+/**
+ * Renders assistant markdown into an element, sanitised.
+ */
+function renderMarkdown($element, markdown) {
+	$element.html(sanitizeMarkdownHtml(marked.parse(String(markdown == null ? '' : markdown))));
+}
+
 class Chat {
 	constructor(config) {
 		this.language = config.language || 'ro-RO';
@@ -193,7 +299,8 @@ class Chat {
 		const userMessage = this.chatInput.val().trim();
 		if (!userMessage) return;
 
-		this.chatBody.append(`<div class="chat-message user-message">${userMessage}</div>`);
+		// The visitor's own text is never markup - .text() escapes it.
+		this.chatBody.append($('<div class="chat-message user-message"></div>').text(userMessage));
 		this.updatePadding();
 		this.chatInput.val('');
 
@@ -232,7 +339,7 @@ class Chat {
 			},
 			success: async (response) => {
 				if (response.reply) {
-					botMessageDiv.html(marked.parse(response.reply));
+					renderMarkdown(botMessageDiv, response.reply);
 					this.addTextToSpeechButton(botMessageDiv, response.reply);
 
 					let conversation = await this.getConversation();
@@ -266,9 +373,10 @@ class Chat {
 	async loadConversation() {
 		const messages = await this.getConversation();
 		messages.forEach((message) => {
-			this.chatBody.append(`<div class="chat-message user-message">${message.user}</div>`);
+			// The visitor's own text is never markup - .text() escapes it.
+			this.chatBody.append($('<div class="chat-message user-message"></div>').text(message.user));
 			let botMsgDiv = $('<div class="chat-message bot-message"></div>');
-			botMsgDiv.html(marked.parse(message.bot));
+			renderMarkdown(botMsgDiv, message.bot);
 			this.chatBody.append(botMsgDiv);
 			this.addTextToSpeechButton(botMsgDiv, message.bot);
 		});
