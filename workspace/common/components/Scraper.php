@@ -10,6 +10,20 @@ use Yii;
 
 class Scraper extends Component
 {
+	/**
+	 * Response types worth storing. Anything else is a file the site serves, not a page it
+	 * wrote, and its bytes would go into the knowledge base as if they were text.
+	 */
+	const ALLOWED_CONTENT_TYPES = ['text/html', 'application/xhtml+xml', 'text/plain'];
+
+	/**
+	 * Extensions never worth fetching. This spares the request, but it is not the guard -
+	 * the list is always a step behind what a site serves, which is how a .webp reached
+	 * the page table past a filter that named .png. {@see isStorableContentType()} is what
+	 * actually decides, on the response itself.
+	 */
+	const SKIPPED_EXTENSIONS = 'jpg|jpeg|png|gif|webp|avif|svg|ico|bmp|tiff?|css|js|mjs|json|xml|rss|pdf|docx?|xlsx?|pptx?|odt|ods|csv|zip|rar|7z|gz|tar|mp4|m4v|mp3|m4a|wav|ogg|webm|avi|mov|wmv|flv|woff2?|ttf|otf|eot|apk|exe|dmg';
+
 	private $visited = [];
 	private $baseUrl;
 	private $depthLimit; // Recursion limit
@@ -49,8 +63,20 @@ class Scraper extends Component
 				return;
 			}
 
+			// Read the type before closing the handle: it is what decides whether this is a
+			// page or a file the site happens to serve at a URL.
+			$contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+
 			// Close cURL session
 			curl_close($ch);
+
+			if (!static::isStorableContentType($contentType)) {
+				// A link the extension list did not recognise, or a URL with no extension
+				// at all. Storing it would put an image's bytes in the page table, and
+				// from there into the vector store as text.
+				Yii::info(['message' => 'Skipped a response that is not a page.', 'url' => $url, 'contentType' => $contentType], __METHOD__);
+				return;
+			}
 
 			// If the response is not empty, proceed
 			if ($response !== false) {
@@ -110,6 +136,28 @@ class Scraper extends Component
 		}
 	}
 
+	/**
+	 * Whether a response is a page rather than a file the site serves.
+	 *
+	 * An empty type is taken as storable: some servers send none, and the extension list
+	 * has already had its say by this point.
+	 *
+	 * @param string $contentType the raw Content-Type header, parameters and all
+	 * @return bool
+	 */
+	public static function isStorableContentType($contentType): bool
+	{
+		$type = strtolower(trim((string) $contentType));
+		if ($type === '') {
+			return true;
+		}
+
+		// "text/html; charset=UTF-8" - only the type itself matters.
+		$type = trim(explode(';', $type)[0]);
+
+		return in_array($type, static::ALLOWED_CONTENT_TYPES, true);
+	}
+
 	private function extractLinks($html, $website = null)
 	{
 		libxml_use_internal_errors(true); // ✅ Prevents HTML parsing errors
@@ -138,7 +186,7 @@ class Scraper extends Component
 			return false;
 		}
 
-		if (preg_match('/\.(jpg|jpeg|png|gif|css|js|pdf|mp4|mp3|avi|mov|wmv)(\?|$)/i', $href)) {
+		if (preg_match('/\.(' . static::SKIPPED_EXTENSIONS . ')(\?|#|$)/i', $href)) {
 			return false;
 		}
 
