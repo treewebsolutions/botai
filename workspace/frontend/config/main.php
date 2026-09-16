@@ -30,6 +30,9 @@ return [
 			'csrfCookie' => [
 				'path' => '/',
 				'httpOnly' => true,
+				'sameSite' => 'Lax',
+				// Dev runs on plain HTTP, where a secure cookie is simply dropped.
+				'secure' => YII_ENV_PROD,
 			],
 		],
 		'user' => [
@@ -39,6 +42,9 @@ return [
 				'path' => '/',
 				'name' => '_identity',
 				'httpOnly' => true,
+				'sameSite' => 'Lax',
+				// Dev runs on plain HTTP, where a secure cookie is simply dropped.
+				'secure' => YII_ENV_PROD,
 			],
 			'loginUrl' => '/',
 		],
@@ -48,6 +54,9 @@ return [
 			'cookieParams' => [
 				'path' => '/',
 				'httpOnly' => true,
+				'sameSite' => 'Lax',
+				// Dev runs on plain HTTP, where a secure cookie is simply dropped.
+				'secure' => YII_ENV_PROD,
 			],
 		],
 		'log' => [

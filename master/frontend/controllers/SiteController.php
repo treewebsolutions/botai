@@ -2,6 +2,7 @@
 
 namespace frontend\controllers;
 
+use common\filters\RateLimit;
 use common\models\ActivateAccountForm;
 use common\models\Article;
 use common\models\ArticleCategory;
@@ -63,6 +64,26 @@ class SiteController extends MainController
 	public function behaviors()
 	{
 		return [
+			// The captcha only ever covered the browser case; this covers the scripted
+			// one, which is where credential stuffing and mail flooding actually come
+			// from. Yii's own RateLimiter keys on the identity, which is no use on
+			// actions reached before anyone is authenticated.
+			'rateLimitCredentials' => [
+				'class' => RateLimit::class,
+				'only' => ['login', 'signup', 'reset-password', 'activate', 'confirm-login', 'assume-identity'],
+				'limit' => 10,
+				'window' => 900,
+				'keyPrefix' => 'ratelimit:credentials',
+			],
+			// These each send a mail on submission, so they get their own counter over a
+			// longer window.
+			'rateLimitMessaging' => [
+				'class' => RateLimit::class,
+				'only' => ['contact', 'subscribe', 'check', 'testimonial'],
+				'limit' => 10,
+				'window' => 3600,
+				'keyPrefix' => 'ratelimit:messaging',
+			],
 			'access' => [
 				'class' => AccessControl::class,
 				'only' => ['logout'],

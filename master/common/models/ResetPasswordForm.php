@@ -2,6 +2,7 @@
 
 namespace common\models;
 
+use common\helpers\CaptchaHelper;
 use Yii;
 use yii\base\Model;
 
@@ -34,6 +35,13 @@ class ResetPasswordForm extends Model
      * @var string The honeypot field.
      */
     public $captchaResponse;
+
+	/**
+	 * @var bool Whether the captcha is verified here. False for the callers that never
+	 * present one: the REST API, and the password-reset flow when it activates a
+	 * still-pending account on the user's behalf.
+	 */
+	public $requireCaptcha = true;
 
 	/**
 	 * @var User The User model.
@@ -120,15 +128,10 @@ class ResetPasswordForm extends Model
 		if (!empty($this->workEmail)) {
 			return false;
 		}
-        if (Yii::$app->settings->get('reCaptchaSiteKey', 'general')) {
-            if (!empty($this->captchaResponse)) {
-                $result = file_get_contents('https://www.google.com/recaptcha/api/siteverify?secret=' . Yii::$app->settings->get('reCaptchaSecretKey', 'general') .'&response=' . $this->captchaResponse);
-                $response = json_decode($result);
-                if (empty($response->success)) {
-                    return false;
-                }
-            }
-        }
+		if ($this->requireCaptcha && !CaptchaHelper::verify($this->captchaResponse)) {
+			$this->addError('captchaResponse', Yii::t('common', 'The captcha verification failed. Please try again.'));
+			return false;
+		}
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
 			if (!($user = $this->getUser())) {
@@ -180,6 +183,8 @@ class ResetPasswordForm extends Model
 
 			if ($user->signup_token && $user->status == User::STATUS_INACTIVE) {
 				$account = new ActivateAccountForm();
+				// Activated on the user's behalf, with no captcha widget in sight.
+				$account->requireCaptcha = false;
 				$token = explode('_', $user->signup_token)[0];
 				$account->token = $token;
 				if (!$account->activate()) {

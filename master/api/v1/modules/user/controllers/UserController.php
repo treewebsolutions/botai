@@ -7,6 +7,7 @@ use api\v1\modules\user\models\SignupForm;
 use api\v1\modules\user\models\User;
 use api\v1\modules\user\models\UserForm;
 use api\v1\modules\user\services\UserService;
+use common\filters\RateLimit;
 use common\models\ActivateAccountForm;
 use common\models\AuthAssignment;
 use common\models\ResetPasswordRequestForm;
@@ -44,6 +45,14 @@ class UserController extends Controller
 	public function behaviors()
 	{
 		return ArrayHelper::merge(parent::behaviors(), [
+			// The API presents no captcha, so this is the only control standing in front
+			// of the credential endpoints.
+			'rateLimit' => [
+				'class' => RateLimit::class,
+				'only' => ['login', 'signup', 'request-password-reset', 'reset-password', 'activate'],
+				'limit' => 10,
+				'window' => 900,
+			],
 			'authenticator' => [
 				'class' => HttpBearerAuth::class,
 				'except' => ['login', 'request-password-reset', 'reset-password', 'signup', 'activate'],
@@ -383,6 +392,8 @@ class UserController extends Controller
 	public function actionRequestPasswordReset()
 	{
 		$model = new ResetPasswordRequestForm();
+		// No captcha widget on the API; rate limiting is the control that belongs here.
+		$model->requireCaptcha = false;
 		if ($model->load(Yii::$app->request->bodyParams, '') && $model->validate() && $model->sendRequest()) {
 			return [
 				'message' => Yii::t('api', 'Check your email/phone for further instructions.'),
@@ -404,6 +415,8 @@ class UserController extends Controller
 	public function actionResetPassword()
 	{
 		$model = new ResetPasswordForm(['scenario' => ResetPasswordForm::SCENARIO_TOKEN]);
+		// No captcha widget on the API; rate limiting is the control that belongs here.
+		$model->requireCaptcha = false;
 		if ($model->load(Yii::$app->request->bodyParams, '') && $model->validate()) {
 			$model->setScenario(ResetPasswordForm::SCENARIO_PASSWORD);
 			if ($model->load(Yii::$app->request->bodyParams, '') && $model->validate() && $model->resetPassword()) {
@@ -429,6 +442,8 @@ class UserController extends Controller
 	public function actionActivate()
 	{
 		$model = new ActivateAccountForm();
+		// No captcha widget on the API; rate limiting is the control that belongs here.
+		$model->requireCaptcha = false;
 
 		if ($model->load(Yii::$app->request->bodyParams, '') && $model->validate() && $model->activate()) {
 			Yii::$app->trigger(User::EVENT_AFTER_ACTIVATE_ACCOUNT, new \yii\base\Event(['sender' => $model->getUser()]));

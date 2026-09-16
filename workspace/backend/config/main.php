@@ -63,6 +63,9 @@ return [
 			'csrfCookie' => [
 				'path' => '/',
 				'httpOnly' => true,
+				'sameSite' => 'Lax',
+				// Dev runs on plain HTTP, where a secure cookie is simply dropped.
+				'secure' => YII_ENV_PROD,
 			],
 		],
 		'user' => [
@@ -72,6 +75,9 @@ return [
 				'path' => '/',
 				'name' => '_identity',
 				'httpOnly' => true,
+				'sameSite' => 'Lax',
+				// Dev runs on plain HTTP, where a secure cookie is simply dropped.
+				'secure' => YII_ENV_PROD,
 			],
 			// A route, not an absolute path: the tenant backend is served under /<url>/admin
 			// locally, so '/' would send guests to the master site instead of this login page.
@@ -83,6 +89,9 @@ return [
 			'cookieParams' => [
 				'path' => '/',
 				'httpOnly' => true,
+				'sameSite' => 'Lax',
+				// Dev runs on plain HTTP, where a secure cookie is simply dropped.
+				'secure' => YII_ENV_PROD,
 			],
 		],
 		'log' => [

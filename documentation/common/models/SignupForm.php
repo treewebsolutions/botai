@@ -2,6 +2,7 @@
 
 namespace common\models;
 
+use common\helpers\CaptchaHelper;
 use Yii;
 use yii\base\Model;
 use tws\helpers\Url;
@@ -191,15 +192,10 @@ class SignupForm extends Model
 		if (!empty($this->workEmail)) {
 			return false;
 		}
-        if (Yii::$app->settings->get('reCaptchaSiteKey', 'general')) {
-            if (!empty($this->captchaResponse)) {
-                $result = file_get_contents('https://www.google.com/recaptcha/api/siteverify?secret=' . Yii::$app->settings->get('reCaptchaSecretKey', 'general') .'&response=' . $this->captchaResponse);
-                $response = json_decode($result);
-                if (empty($response->success)) {
-                    return false;
-                }
-            }
-        }
+		if (!CaptchaHelper::verify($this->captchaResponse)) {
+			$this->addError('captchaResponse', Yii::t('common', 'The captcha verification failed. Please try again.'));
+			return false;
+		}
 		if (!$this->validate()) {
 			return false;
 		}
