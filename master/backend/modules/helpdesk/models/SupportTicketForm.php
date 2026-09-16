@@ -2,6 +2,7 @@
 
 namespace backend\modules\helpdesk\models;
 
+use common\helpers\HtmlSanitizer;
 use common\models\SupportTicket;
 use Yii;
 use yii\base\Model;
@@ -126,4 +127,20 @@ class SupportTicketForm extends SupportTicket
 			return false;
 		}
 	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * The ticket editor is open to every registered customer and what it stores is
+	 * printed as HTML in the helpdesk screens an administrator reads, which makes a
+	 * ticket the shortest path from an ordinary account into an admin session. Reduced
+	 * on the way in; the views reduce again on the way out, for what is already stored.
+	 */
+	public function beforeValidate()
+	{
+		$this->content = HtmlSanitizer::richText($this->content);
+
+		return parent::beforeValidate();
+	}
+
 }

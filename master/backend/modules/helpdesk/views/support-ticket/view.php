@@ -2,6 +2,7 @@
 /* @var $this yii\web\View */
 /* @var $model common\models\SupportTicket */
 
+use common\helpers\HtmlSanitizer;
 use common\models\EventLog;
 use common\models\SupportTicket;
 use common\widgets\datatable\DataTable;
@@ -152,14 +153,14 @@ $showEventLogs = isset($showEventLogs) ? $showEventLogs : Yii::$app->eventLog->e
 						$content[] = Html::tag('div', implode('', [
 							Html::tag('div', $supportTicketComment->created_at ? Yii::$app->formatter->asDatetime($supportTicketComment->created_at) : '&mdash;', ['class' => 'td col-autowidth']),
 							Html::tag('div', $supportTicketComment->creator ? Html::a($supportTicketComment->creator->getFullName(), ['/user-manager/user/view', 'id' => $supportTicketComment->created_by]) : '&mdash;', ['class' => 'td col-autowidth']),
-							Html::tag('div', $supportTicketComment->content ?: '&mdash;', ['class' => 'td']),
+							Html::tag('div', $supportTicketComment->content ? HtmlSanitizer::richText($supportTicketComment->content) : '&mdash;', ['class' => 'td']),
 						]), ['class' => 'tr']);
 					}
 
 					$content[] = Html::tag('div', implode('', [
 						Html::tag('div', $model->created_at ? Yii::$app->formatter->asDatetime($model->created_at) : '&mdash;', ['class' => 'td col-autowidth']),
 						Html::tag('div', $model->creator ? Html::a($model->creator->fullName, ['/user-manager/user/view', 'id' => $model->created_by]) : '&mdash;', ['class' => 'td col-autowidth']),
-						Html::tag('div', $model->content ?: '&mdash;', ['class' => 'td']),
+						Html::tag('div', $model->content ? HtmlSanitizer::richText($model->content) : '&mdash;', ['class' => 'td']),
 					]), ['class' => 'tr']);
 
 					return Html::tag('div', implode('', $content), ['class' => 'table table-bordered table-nested']);

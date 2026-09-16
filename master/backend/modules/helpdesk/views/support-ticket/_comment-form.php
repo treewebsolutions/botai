@@ -4,6 +4,7 @@
 /* @var $model common\models\SupportTicket */
 /* @var $commentModel common\models\SupportTicketComment */
 
+use common\helpers\HtmlSanitizer;
 use backend\widgets\ActiveForm;
 use tws\widgets\tinymce\TinyMCE;
 use yii\helpers\Html;
@@ -67,7 +68,7 @@ use tws\helpers\Url;
 					</div>
 				</div>
 			</div>
-			<div class="panel-body"><?= $supportTicketComment->content ?></div>
+			<div class="panel-body"><?= HtmlSanitizer::richText($supportTicketComment->content) ?></div>
 		</div>
 	<?php endforeach; ?>
 
@@ -86,6 +87,6 @@ use tws\helpers\Url;
 				</div>
 			</div>
 		</div>
-		<div class="panel-body"><?= $model->content ?></div>
+		<div class="panel-body"><?= HtmlSanitizer::richText($model->content) ?></div>
 	</div>
 </div>
