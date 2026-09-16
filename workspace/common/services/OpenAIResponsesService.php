@@ -410,7 +410,7 @@ class OpenAIResponsesService
 	 */
 	public static function getApiKey(): string
 	{
-		$integration = Integration::findOpenAI();
+		$integration = Integration::resolveOpenAI();
 
 		if ($integration === null || (string) $integration->getApiKey() === '') {
 			throw new \RuntimeException('OpenAI API key not configured');
@@ -425,7 +425,7 @@ class OpenAIResponsesService
 	public static function isApiKeyConfigured(): bool
 	{
 		try {
-			$integration = Integration::findOpenAI();
+			$integration = Integration::resolveOpenAI();
 			return $integration !== null && (string) $integration->getApiKey() !== '';
 		} catch (\Throwable $e) {
 			return false;

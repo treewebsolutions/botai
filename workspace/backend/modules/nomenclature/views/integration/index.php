@@ -78,6 +78,18 @@ $this->params['actions'] = [
 ];
 ?>
 
+<?php if (Integration::isUsingPlatformOpenAI()): ?>
+	<?php
+	// No key of this workspace's own is in use, so the chat is running on the
+	// platform's account. Said plainly, because otherwise there is nothing on this
+	// screen to explain why the assistants work.
+	?>
+	<div class="alert alert-info">
+		<span class="fa fa-info-circle"></span>
+		<?= Yii::t('backend', 'The assistants are running on the platform OpenAI key. Add an integration of your own to use your account instead.') ?>
+	</div>
+<?php endif; ?>
+
 <div class="dt-scroll-x">
 <?= DataTable::widget([
 	'id' => 'dt-integrations',

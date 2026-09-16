@@ -178,7 +178,7 @@ class OpenAiRecordVectorStoreService
 	public static function isChatAvailable(): bool
 	{
 		try {
-			$integration = Integration::findOpenAI();
+			$integration = Integration::resolveOpenAI();
 			if ($integration === null || (string) $integration->getApiKey() === '') {
 				return false;
 			}

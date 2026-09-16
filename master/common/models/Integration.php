@@ -35,6 +35,15 @@ class Integration extends CommonActiveRecord
 	const TYPE_SPV = 1;
 
 	/**
+	 * The platform-wide OpenAI account. A tenant with no integration of its own falls
+	 * back to this one, so the chat works before anybody configures anything.
+	 *
+	 * Note the value differs from the workspace table's TYPE_OPENAI: these are separate
+	 * tables in separate databases, and SPV already holds 1 here.
+	 */
+	const TYPE_OPENAI = 2;
+
+	/**
      * {@inheritdoc}
      */
     public static function tableName()
@@ -133,6 +142,70 @@ class Integration extends CommonActiveRecord
 	{
 		return [
 			static::TYPE_SPV => Yii::t('label', 'SPV'),
+			static::TYPE_OPENAI => Yii::t('label', 'OpenAI'),
 		];
 	}
+
+	/**
+	 * Decodes the data JSON column.
+	 *
+	 * @return array
+	 */
+	public function getDecodedData(): array
+	{
+		$decoded = json_decode((string) $this->data, true);
+		if (is_array($decoded)) {
+			return $decoded;
+		}
+
+		// Backward compatibility: a plain string is treated as the api_key
+		if (!empty($this->data)) {
+			return ['api_key' => trim((string) $this->data)];
+		}
+
+		return [];
+	}
+
+	/**
+	 * Returns the API key from the decoded data.
+	 *
+	 * @return string|null
+	 */
+	public function getApiKey(): ?string
+	{
+		$apiKey = $this->getDecodedData()['api_key'] ?? null;
+
+		return $apiKey !== null && $apiKey !== '' ? (string) $apiKey : null;
+	}
+
+	/**
+	 * Returns a specific setting from the decoded data.
+	 *
+	 * @param string $key
+	 * @param mixed $default
+	 * @return mixed
+	 */
+	public function getSetting(string $key, $default = null)
+	{
+		return $this->getDecodedData()[$key] ?? $default;
+	}
+
+	/**
+	 * The OpenAI integration that provides the API key: the default one first, then any
+	 * active one, so a key saved without the "Default" checkbox still works.
+	 *
+	 * @return static|null
+	 */
+	public static function findOpenAI()
+	{
+		return static::find()
+			->where([
+				'status' => static::STATUS_ACTIVE,
+				'deleted' => static::NO,
+				'type' => static::TYPE_OPENAI,
+			])
+			->orderBy(['default' => SORT_DESC, 'id' => SORT_ASC])
+			->one();
+	}
+
 }

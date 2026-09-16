@@ -196,4 +196,42 @@ class Integration extends CommonActiveRecord
 			->orderBy(['default' => SORT_DESC, 'id' => SORT_ASC])
 			->one();
 	}
+
+	/**
+	 * The OpenAI integration whose key this tenant actually runs on.
+	 *
+	 * The tenant's own comes first - default, then any active one. A tenant that has
+	 * configured nothing falls back to the platform's integration in the master
+	 * database, so the chat works out of the box and a tenant can take it over at any
+	 * point simply by saving its own key.
+	 *
+	 * @return \common\models\Integration|\common\models\master\Integration|null
+	 */
+	public static function resolveOpenAI()
+	{
+		$own = static::findOpenAI();
+		if ($own !== null && (string) $own->getApiKey() !== '') {
+			return $own;
+		}
+
+		$platform = master\Integration::findPlatformOpenAI();
+
+		return $platform !== null && (string) $platform->getApiKey() !== '' ? $platform : $own;
+	}
+
+	/**
+	 * Whether the key in use belongs to the platform rather than to this tenant.
+	 *
+	 * Surfaced in the integrations screen so an administrator can tell which account the
+	 * usage is billed against.
+	 *
+	 * @return bool
+	 */
+	public static function isUsingPlatformOpenAI()
+	{
+		$resolved = static::resolveOpenAI();
+
+		return $resolved instanceof master\Integration;
+	}
+
 }
