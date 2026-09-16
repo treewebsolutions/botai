@@ -17,7 +17,7 @@ $this->title = Yii::t('common', 'Request Password Reset');
 
 	<p><?= Yii::t('common', 'Please fill out your email. A link to reset password will be sent there.') ?></p>
 
-	<?= $form->field($model, 'email')->input('email', ['autofocus' => true]) ?>
+	<?= $form->field($model, 'email')->input('email', ['autocomplete' => 'email', 'autofocus' => true]) ?>
 
 	<div class="form-actions">
 		<?= Html::submitButton(Yii::t('common', 'Send'), ['class' => 'btn btn-block btn-warning']) ?>

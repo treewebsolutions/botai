@@ -16,7 +16,7 @@ $this->title = Yii::t('common', 'Reset Password');
 ]); ?>
 
 	<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
-	<?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput(['autofocus' => true])->label(Yii::t('common', 'Please enter your new password')) ?>
+	<?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput(['autofocus' => true, 'autocomplete' => 'new-password'])->label(Yii::t('common', 'Please enter your new password')) ?>
 
 	<div class="form-actions">
 		<?= Html::submitButton(Yii::t('common', 'Save'), ['class' => 'btn btn-block btn-warning']) ?>
