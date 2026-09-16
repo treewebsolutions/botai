@@ -45,7 +45,7 @@ $this->params['breadcrumbs'] = [
 				</div>
 				<div class="col-sm-6">
 					<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
-					<?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput()->hint(Yii::t('backend', 'SMTP password.')) ?>
+					<?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => $model->password ? Yii::t('backend', 'Unchanged. Type a new value to replace it.') : ''])->hint(Yii::t('backend', 'SMTP password.')) ?>
 				</div>
 			</div>
 			<div class="row">

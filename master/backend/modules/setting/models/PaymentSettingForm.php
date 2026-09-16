@@ -11,6 +11,8 @@ use yii\helpers\ArrayHelper;
 
 class PaymentSettingForm extends Setting
 {
+	use \common\traits\SecretSettingTrait;
+
 	/**
 	 * @var bool Flag that indicates if recurring payment is active.
 	 */
@@ -170,6 +172,9 @@ class PaymentSettingForm extends Setting
 		parent::afterFind();
 
 		$this->setAttributes($this->getUnserializedValue('setting'));
+		// Captured before the request can overwrite them, so an untouched field
+		// restores rather than blanks the stored secret.
+		$this->rememberSecrets();
 	}
 
 	/**
@@ -270,4 +275,20 @@ class PaymentSettingForm extends Setting
 			return null;
 		}
 	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * These are rendered as empty inputs, so a blank submission means "leave it
+	 * as it was" rather than "clear it".
+	 */
+	public function secretAttributes()
+	{
+		return [
+			'stripeWebhookIPNKey',
+			'stripePrivateKey',
+			'stripePublicKey',
+		];
+	}
+
 }

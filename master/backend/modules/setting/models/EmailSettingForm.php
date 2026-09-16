@@ -9,6 +9,8 @@ use yii\helpers\ArrayHelper;
 
 class EmailSettingForm extends Setting
 {
+	use \common\traits\SecretSettingTrait;
+
 	/**
 	 * @var string The email address from which the emails will be sent.
 	 */
@@ -90,6 +92,9 @@ class EmailSettingForm extends Setting
 		parent::afterFind();
 
 		$this->setAttributes($this->getUnserializedValue('setting'));
+		// Captured before the request can overwrite them, so an untouched field
+		// restores rather than blanks the stored secret.
+		$this->rememberSecrets();
 	}
 
 	/**
@@ -114,4 +119,18 @@ class EmailSettingForm extends Setting
 
 		return $this->save() ? $this : null;
 	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * These are rendered as empty inputs, so a blank submission means "leave it
+	 * as it was" rather than "clear it".
+	 */
+	public function secretAttributes()
+	{
+		return [
+			'password',
+		];
+	}
+
 }

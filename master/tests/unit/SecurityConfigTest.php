@@ -193,4 +193,63 @@ class SecurityConfigTest extends TestCase
 				"{$app}/.gitignore must not exclude the uploads directory wholesale");
 		}
 	}
+
+	/**
+	 * @return array
+	 */
+	public function settingsViewProvider()
+	{
+		return [
+			'master email' => ['master/backend/modules/setting/views/setting/email.php'],
+			'master general' => ['master/backend/modules/setting/views/setting/index.php'],
+			'master payment' => ['master/backend/modules/setting/views/setting/payment.php'],
+			'workspace email' => ['workspace/backend/modules/setting/views/setting/email.php'],
+			'documentation email' => ['documentation/backend/modules/setting/views/setting/email.php'],
+			'documentation general' => ['documentation/backend/modules/setting/views/setting/index.php'],
+		];
+	}
+
+	/**
+	 * passwordInput() fills the value attribute from the model, so these pages shipped
+	 * the SMTP password, the Stripe keys and the reCAPTCHA secret to the browser in the
+	 * markup - readable from view-source, and a click away behind the reveal toggle.
+	 *
+	 * @dataProvider settingsViewProvider
+	 * @param string $path
+	 */
+	public function testTheSettingsPagesDoNotRenderTheirSecrets($path)
+	{
+		$source = $this->source($path);
+
+		$this->assertGreaterThan(0, substr_count($source, 'passwordInput('),
+			"{$path} is expected to render at least one secret field");
+		$this->assertSame(
+			substr_count($source, 'passwordInput('),
+			substr_count($source, "passwordInput(['value' => ''"),
+			"every secret field in {$path} must render empty"
+		);
+	}
+
+	/**
+	 * Rendering empty only works while a blank submission restores rather than clears.
+	 */
+	public function testTheSettingsFormsRestoreAnUntouchedSecret()
+	{
+		$forms = [
+			'master/backend/modules/setting/models/EmailSettingForm.php',
+			'master/backend/modules/setting/models/PaymentSettingForm.php',
+			'master/backend/modules/setting/models/GeneralSettingForm.php',
+			'workspace/backend/modules/setting/models/EmailSettingForm.php',
+			'documentation/backend/modules/setting/models/EmailSettingForm.php',
+			'documentation/backend/modules/setting/models/GeneralSettingForm.php',
+		];
+		foreach ($forms as $path) {
+			$source = $this->source($path);
+			$this->assertStringContainsString('SecretSettingTrait', $source,
+				"{$path} must restore a secret the user left untouched");
+			$this->assertStringContainsString('rememberSecrets()', $source,
+				"{$path} must capture the stored secrets in afterFind()");
+		}
+	}
+
 }

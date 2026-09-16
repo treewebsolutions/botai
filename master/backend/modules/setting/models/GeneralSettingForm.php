@@ -16,6 +16,8 @@ use yii\web\UploadedFile;
 
 class GeneralSettingForm extends Setting
 {
+	use \common\traits\SecretSettingTrait;
+
 	/**
 	 * @var string The application host info.
 	 */
@@ -367,6 +369,9 @@ class GeneralSettingForm extends Setting
 		parent::afterFind();
 
 		$this->setAttributes($this->getUnserializedValue('setting'));
+		// Captured before the request can overwrite them, so an untouched field
+		// restores rather than blanks the stored secret.
+		$this->rememberSecrets();
 		$this->userPasswordResetTokenExpiration = $this->userPasswordResetTokenExpiration / 60;
 		$this->userLoginDuration = $this->userLoginDuration / 24 / 3600;
 		$this->maxFileSize = $this->maxFileSize / 1024;
@@ -721,4 +726,20 @@ class GeneralSettingForm extends Setting
 			return null;
 		}
 	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * These are rendered as empty inputs, so a blank submission means "leave it
+	 * as it was" rather than "clear it".
+	 */
+	public function secretAttributes()
+	{
+		return [
+			'googleMapKey',
+			'reCaptchaSiteKey',
+			'reCaptchaSecretKey',
+		];
+	}
+
 }

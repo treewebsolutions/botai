@@ -443,8 +443,7 @@ $this->params['breadcrumbs'] = [
 			<div class="row">
 				<div class="col-sm-6">
 					<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
-					<?= $form->field($model, 'googleMapKey', ['template' => $secretFieldTemplate])->passwordInput([
-						'placeholder' => Yii::t('common', 'Example') . ': AIzaSyxxxxxxxxxxxxxxx',
+					<?= $form->field($model, 'googleMapKey', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => Yii::t('common', 'Example') . ': AIzaSyxxxxxxxxxxxxxxx',
 					]) ?>
 				</div>
 				<div class="col-sm-6">
@@ -467,13 +466,11 @@ $this->params['breadcrumbs'] = [
 			</div>
             <div class="row">
                 <div class="col-sm-6">
-                    <?= $form->field($model, 'reCaptchaSiteKey', ['template' => $secretFieldTemplate])->passwordInput([
-                        'placeholder' => Yii::t('common', 'Example') . ': 6LcXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+                    <?= $form->field($model, 'reCaptchaSiteKey', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => Yii::t('common', 'Example') . ': 6LcXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
                     ]) ?>
                 </div>
                 <div class="col-sm-6">
-                    <?= $form->field($model, 'reCaptchaSecretKey', ['template' => $secretFieldTemplate])->passwordInput([
-                        'placeholder' => Yii::t('common', 'Example') . ': 6LcYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
+                    <?= $form->field($model, 'reCaptchaSecretKey', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => Yii::t('common', 'Example') . ': 6LcYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
                     ]) ?>
                 </div>
             </div>

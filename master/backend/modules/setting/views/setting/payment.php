@@ -135,15 +135,15 @@ $this->params['breadcrumbs'] = [
 		                        </div>
 		                        <div class="col-lg-6">
 			                        <?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
-			                        <?= $form->field($model, 'stripeWebhookIPNKey', ['template' => $secretFieldTemplate])->passwordInput()->hint(Yii::t('backend', 'The Webhook key.') . ' ' . Yii::t('common', 'Example') . ': whsec_***') ?>
+			                        <?= $form->field($model, 'stripeWebhookIPNKey', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => $model->stripeWebhookIPNKey ? Yii::t('backend', 'Unchanged. Type a new value to replace it.') : ''])->hint(Yii::t('backend', 'The Webhook key.') . ' ' . Yii::t('common', 'Example') . ': whsec_***') ?>
 		                        </div>
 	                        </div>
 	                        <div class="row">
                                 <div class="col-lg-6">
-									<?= $form->field($model, 'stripePrivateKey', ['template' => $secretFieldTemplate])->passwordInput()->hint(Yii::t('backend', 'The API private key.') . ' ' . Yii::t('common', 'Example') . ': sk_test_abcdefghijklmnopqrstuvwxyz') ?>
+									<?= $form->field($model, 'stripePrivateKey', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => $model->stripePrivateKey ? Yii::t('backend', 'Unchanged. Type a new value to replace it.') : ''])->hint(Yii::t('backend', 'The API private key.') . ' ' . Yii::t('common', 'Example') . ': sk_test_abcdefghijklmnopqrstuvwxyz') ?>
                                 </div>
                                 <div class="col-lg-6">
-									<?= $form->field($model, 'stripePublicKey', ['template' => $secretFieldTemplate])->passwordInput()->hint(Yii::t('backend', 'The API public key.') . ' ' . Yii::t('common', 'Example') . ': pk_test_abcdefghijklmnopqrstuvwxyz') ?>
+									<?= $form->field($model, 'stripePublicKey', ['template' => $secretFieldTemplate])->passwordInput(['value' => '', 'placeholder' => $model->stripePublicKey ? Yii::t('backend', 'Unchanged. Type a new value to replace it.') : ''])->hint(Yii::t('backend', 'The API public key.') . ' ' . Yii::t('common', 'Example') . ': pk_test_abcdefghijklmnopqrstuvwxyz') ?>
                                 </div>
                             </div>
                         </div>

@@ -59,7 +59,7 @@ $this->params['breadcrumbs'] = [
 							'class' => 'form-group required',
 						],
 						'template' => $secretFieldTemplate,
-					])->passwordInput()->hint(Yii::t('backend', 'SMTP password.')) ?>
+					])->passwordInput(['value' => '', 'placeholder' => $model->password ? Yii::t('backend', 'Unchanged. Type a new value to replace it.') : ''])->hint(Yii::t('backend', 'SMTP password.')) ?>
 				</div>
 			</div>
 			<div class="row">
