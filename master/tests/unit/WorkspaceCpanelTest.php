@@ -4,6 +4,7 @@ namespace tests\unit;
 
 use common\models\Workspace;
 use PHPUnit\Framework\TestCase;
+use Yii;
 
 /**
  * The cPanel-side naming derived from a workspace row (no database, no cPanel): the
@@ -55,5 +56,55 @@ class WorkspaceCpanelTest extends TestCase
 		$this->assertFalse($workspace->isCPanelConfigured());
 		$this->assertTrue($workspace->isLocalInstallEnvironment());
 		$this->assertTrue($this->callProtected($workspace, 'ensureCpanelAddonDomain'), 'a no-op locally');
+	}
+
+	/**
+	 * Credentials decide, not the environment name.
+	 *
+	 * A production deployment left on the dev entry script used to take the local path
+	 * before reading the cPanel settings at all, so it ran CREATE DATABASE as the tenant
+	 * MySQL user and was refused by a host that never grants it.
+	 */
+	public function testConfiguredCredentialsMeanCpanelInstall()
+	{
+		$workspace = new Workspace(['url' => 'demo']);
+
+		Yii::$app->set('cPanel', [
+			'class' => \common\components\CPanel::class,
+			'baseUrl' => 'https://example.test:2083',
+			'username' => 'account',
+			'apiToken' => 'token',
+		]);
+
+		try {
+			$this->assertTrue($workspace->isCPanelConfigured());
+			$this->assertFalse($workspace->isLocalInstallEnvironment(), 'the API path, whatever YII_ENV says');
+		} finally {
+			Yii::$app->clear('cPanel');
+		}
+	}
+
+	/**
+	 * The placeholders of an environment file that was never filled in are not
+	 * credentials: the component refuses to initialise on them, and the installer has to
+	 * read that as "install locally" rather than as an error.
+	 */
+	public function testPlaceholderCredentialsStayLocal()
+	{
+		$workspace = new Workspace(['url' => 'demo']);
+
+		Yii::$app->set('cPanel', [
+			'class' => \common\components\CPanel::class,
+			'baseUrl' => 'CPANEL_BASE_URL',
+			'username' => 'CPANEL_USERNAME',
+			'password' => 'CPANEL_PASSWORD',
+		]);
+
+		try {
+			$this->assertFalse($workspace->isCPanelConfigured());
+			$this->assertTrue($workspace->isLocalInstallEnvironment());
+		} finally {
+			Yii::$app->clear('cPanel');
+		}
 	}
 }

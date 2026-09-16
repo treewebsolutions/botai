@@ -500,21 +500,25 @@ class Workspace extends CommonActiveRecord
 
 	/**
 	 * Whether the Workspace is provisioned locally (Docker, Laragon, OrbStack...) rather
-	 * than through cPanel: either the application runs in the `dev` environment or no
-	 * cPanel component is configured. In this case the database is created/dropped
-	 * directly via PDO and no crontab entry is managed (see docker-compose `scheduler`).
+	 * than through cPanel. In that case the database is created/dropped directly via PDO
+	 * and no crontab entry is managed (see docker-compose `scheduler`).
 	 *
-	 * The `YII_ENV_DEV` check comes first so the cPanel component (which validates its
-	 * `baseUrl` on init) is never instantiated with the placeholder dev values.
+	 * Configured cPanel credentials are the whole answer. This used to return true for
+	 * YII_ENV_DEV before looking at them, which made the installer depend on which
+	 * entry script `init` had generated rather than on how the server provisions: a
+	 * production deployment left on the dev entry script took the local path, ran
+	 * CREATE DATABASE as the tenant MySQL user, and was refused by a shared host that
+	 * never grants it - while the correct cPanel credentials sat unread beside it.
+	 *
+	 * The `YII_ENV_DEV` shortcut guarded against instantiating the component with the
+	 * placeholder values, whose `baseUrl` fails validation in init(). It is not needed:
+	 * {@see isCPanelConfigured()} already catches that and answers false, so a dev box
+	 * with an unfilled environment file still installs locally.
 	 *
 	 * @return bool
 	 */
 	public function isLocalInstallEnvironment()
 	{
-		if (defined('YII_ENV_DEV') && YII_ENV_DEV) {
-			return true;
-		}
-
 		return !$this->isCPanelConfigured();
 	}
 
