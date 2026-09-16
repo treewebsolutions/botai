@@ -15,8 +15,15 @@ jobs:
           MYSQL_ROOT_PASSWORD: mysql
         ports:
           - 3306:3306
+        # The health check must speak TCP, because that is what the steps below use.
+        # `-h localhost` goes over the Unix socket, which answers during MySQL's
+        # initialisation phase - the entrypoint runs a temporary server with
+        # networking disabled while it sets up the data directory. The service was
+        # therefore reported healthy before port 3306 accepted anything, and the next
+        # step died with "Lost connection to MySQL server at 'reading initial
+        # communication packet'".
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -pmysql"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -P 3306 -u root -pmysql"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
