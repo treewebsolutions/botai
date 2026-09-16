@@ -539,6 +539,19 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Whether the installer owns a cPanel cron line per workspace.
+	 *
+	 * Off unless asked for: an installation that already has its tenant schedules in the
+	 * crontab by hand does not want the installer adding a second copy of each.
+	 *
+	 * @return bool
+	 */
+	public function usesCpanelCrontab()
+	{
+		return $this->isCPanelConfigured() && (bool) (Yii::$app->params['workspace.manageCrontab'] ?? false);
+	}
+
+	/**
 	 * Whether the tenant database still has to be created and seeded.
 	 *
 	 * True when it does not exist, and also when it exists but holds no tables: a database
@@ -927,7 +940,7 @@ class Workspace extends CommonActiveRecord
 	 */
 	protected function updateCrontab($remove = false)
 	{
-		if ($this->isLocalInstallEnvironment()) {
+		if (!$this->usesCpanelCrontab()) {
 			return true;
 		}
 
@@ -940,21 +953,43 @@ class Workspace extends CommonActiveRecord
 			'command' => "/usr/local/bin/php " . $this->getDirectoryPath() . "/yii schedule/run >/dev/null 2>&1",
 		];
 
+		$existing = $this->findCrontabLine($cronJob['command']);
+
 		if ($remove === false) {
-			Yii::$app->cPanel->api2->Cron->add_line($cronJob);
-		} else {
-			$response = Yii::$app->cPanel->api2->Cron->fetchcron();
-			if ($response && is_array($response['cpanelresult']['data'])) {
-				foreach ($response['cpanelresult']['data'] as $line) {
-					if ($line['type'] == 'command' && $line['command'] == $cronJob['command']) {
-						Yii::$app->cPanel->api2->Cron->remove_line(['linekey' => $line['linekey']]);
-						break;
-					}
-				}
+			// add_line appends without looking, so installing a workspace twice left two
+			// identical lines behind and the scheduler ran twice over the same tenant.
+			if ($existing === null) {
+				Yii::$app->cPanel->api2->Cron->add_line($cronJob);
 			}
+		} elseif ($existing !== null) {
+			Yii::$app->cPanel->api2->Cron->remove_line(['linekey' => $existing]);
 		}
 
 		return true;
+	}
+
+	/**
+	 * The `linekey` of the crontab line running the given command, or null when the
+	 * crontab has none.
+	 *
+	 * @param string $command
+	 * @return string|null
+	 */
+	protected function findCrontabLine($command)
+	{
+		$response = Yii::$app->cPanel->api2->Cron->fetchcron();
+		$lines = $response['cpanelresult']['data'] ?? null;
+		if (!is_array($lines)) {
+			return null;
+		}
+
+		foreach ($lines as $line) {
+			if (($line['type'] ?? '') === 'command' && ($line['command'] ?? '') === $command) {
+				return $line['linekey'] ?? null;
+			}
+		}
+
+		return null;
 	}
 
 	/**

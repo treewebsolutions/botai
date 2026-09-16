@@ -122,6 +122,38 @@ class WorkspaceCpanelTest extends TestCase
 	}
 
 	/**
+	 * The crontab is not touched unless the installation asks for it.
+	 *
+	 * An account whose tenant schedules are already in the crontab by hand would
+	 * otherwise get a second copy of each the next time a workspace was installed - and
+	 * the no-op has to come before any cPanel call, since the test app can reach none.
+	 */
+	public function testCrontabIsLeftAloneUnlessAskedFor()
+	{
+		$workspace = new Workspace(['url' => 'tws', 'code' => 'tws']);
+
+		Yii::$app->set('cPanel', [
+			'class' => \common\components\CPanel::class,
+			'baseUrl' => 'https://example.test:2083',
+			'username' => 'account',
+			'apiToken' => 'token',
+		]);
+		$previous = Yii::$app->params['workspace.manageCrontab'] ?? null;
+
+		try {
+			Yii::$app->params['workspace.manageCrontab'] = false;
+			$this->assertFalse($workspace->usesCpanelCrontab());
+			$this->assertTrue($this->callProtected($workspace, 'updateCrontab'), 'a no-op, no API call');
+
+			Yii::$app->params['workspace.manageCrontab'] = true;
+			$this->assertTrue($workspace->usesCpanelCrontab());
+		} finally {
+			Yii::$app->params['workspace.manageCrontab'] = $previous;
+			Yii::$app->clear('cPanel');
+		}
+	}
+
+	/**
 	 * The placeholders of an environment file that was never filled in are not
 	 * credentials: the component refuses to initialise on them, and the installer has to
 	 * read that as "install locally" rather than as an error.

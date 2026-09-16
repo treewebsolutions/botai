@@ -38,6 +38,11 @@ return [
 	// "/<url>" prefix exactly when there is no addon domain to drop it for.
 	'workspace.addonDomains' => false,
 
+	// Whether the installer manages a cPanel cron line per workspace (`yii schedule/run`).
+	// Off by default: an installation whose tenant schedules are already in the crontab by
+	// hand does not want a second copy of each appearing underneath them.
+	'workspace.manageCrontab' => false,
+
 	'user.loginDuration' => 60 * 60 * 3600,
 	'user.loginTokenExpiration' => 60 * 60 * 3600,
 	'user.passwordResetTokenExpiration' => 60 * 60 * 3600,
