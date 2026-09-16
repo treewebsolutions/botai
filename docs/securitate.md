@@ -64,6 +64,12 @@ Fixurile de cod nu anulează expunerea deja produsă:
    depinde de ele.
 5. **Verifică `mod_headers`** pe serverul de producție; fără el, headerele din `.htaccess`
    sunt ignorate în tăcere (cele ale aplicației vin din PHP și nu depind de el).
+6. **Configurează `request.trustedHosts`** dacă aplicația stă în spatele unui proxy, load
+   balancer sau CDN. Yii întoarce `REMOTE_ADDR` din `getUserIP()` și ignoră
+   `X-Forwarded-For` până i se spune ce proxy-uri să creadă — altfel fiecare cerere poartă
+   adresa proxy-ului, toți vizitatorii împart un contor, iar primii zece îi blochează pe
+   ceilalți. `RateLimit` detectează semnătura asta și renunță la contorul pe adresă în loc
+   să pice site-ul, dar e o plasă, nu o rezolvare.
 
 ## Schimbări de comportament care pot rupe ceva
 
@@ -77,6 +83,8 @@ Fixurile de cod nu anulează expunerea deja produsă:
 | Politica de parole (min. 10 + complexitate) | Conturile vechi rămân valide; doar schimbările noi sunt verificate |
 | Captcha eșuează închis | Un apelant fără widget trebuie să seteze `requireCaptcha = false` |
 | Rate limiting pe credențiale | 10 încercări / 15 min pe IP; NAT-ul unui birou contează ca un client |
+| Al doilea contor, pe identificator | Un atacator poate bloca un cont cunoscut de la propria resetare; limita e mai generoasă tocmai de aceea |
+| Throttling pe widget-ul de chat | 60 de ture / 15 min pe conversație |
 
 ## Convenții de respectat în cod nou
 
@@ -110,6 +118,10 @@ Zona nu avea acoperire deloc. Suita master a crescut de la 18 la 116 teste.
   `treewebsolutions/yii2-widget-tinymce` pe `dev-main`, iar trecerea de pe 4.x e o
   migrare de editor, nu un patch. Rich text-ul e purificat la ambele capete, ceea ce
   limitează ce poate face un payload, dar biblioteca tot trebuie înlocuită.
+- **jQuery UI 1.12.1**, afectată de CVE-2021-41182, -41183, -41184 și CVE-2022-31160.
+  Nu poate fi ridicată: `bower-asset/jquery-ui` se oprește la 1.12.1 (de la 1.13 biblioteca
+  a trecut pe npm), iar `yiisoft/yii2-jui` — tras tranzitiv de `lajax/yii2-translate-manager`
+  — cere explicit `~1.12.1`. Ieșirea înseamnă înlocuirea lui `yii2-jui`, nu un bump de versiune.
 - **Backup-urile nu sunt criptate.** Accesul e restrâns la `superAdmin`, dar arhiva
   conține `db.sql` și configurațiile.
 - **CSP complet.** Acum se trimite doar `frame-ancestors`. Un CSP cu `script-src` cere

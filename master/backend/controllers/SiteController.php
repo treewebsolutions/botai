@@ -2,6 +2,7 @@
 
 namespace backend\controllers;
 
+use common\filters\RateLimit;
 use backend\models\SearchForm;
 use backend\models\UserProfileForm;
 use common\models\County;
@@ -20,6 +21,20 @@ class SiteController extends MainController
 	public function behaviors()
 	{
 		return [
+			// The admin login was the one credential form with nothing in front of it,
+			// and it is the most valuable one in the system.
+			'rateLimit' => [
+				'class' => RateLimit::class,
+				'only' => ['login'],
+				'limit' => 10,
+				'window' => 900,
+				// Also counted per account named, which is the shape an address counter
+				// cannot see: many addresses working on one login.
+				'identityParams' => ['username', 'email'],
+				'identityLimit' => 10,
+				'identityWindow' => 3600,
+				'keyPrefix' => 'ratelimit:admin',
+			],
 			'access' => [
 				'class' => AccessControl::class,
 				'rules' => [

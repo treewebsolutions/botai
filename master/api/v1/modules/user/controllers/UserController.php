@@ -53,6 +53,9 @@ class UserController extends Controller
 				'only' => ['login', 'signup', 'request-password-reset', 'reset-password', 'activate'],
 				'limit' => 10,
 				'window' => 900,
+				'identityParams' => ['username', 'email', 'phone'],
+				'identityLimit' => 10,
+				'identityWindow' => 3600,
 			],
 			'authenticator' => [
 				'class' => HttpBearerAuth::class,

@@ -2,6 +2,7 @@
 
 namespace frontend\modules\embed\controllers;
 
+use common\filters\RateLimit;
 use common\models\Assistant;
 use common\models\Conversation;
 use common\models\Message;
@@ -35,6 +36,20 @@ class ChatController extends DefaultController
 	public function behaviors()
 	{
 		$behaviors = parent::behaviors();
+		// The widget is public and unauthenticated by design, and every turn costs an
+		// upstream model call, so an unthrottled endpoint is somebody else's bill. The
+		// conversation token is the closest thing to an identity here, which also keeps
+		// one abusive visitor from spending a tenant's whole budget.
+		$behaviors['rateLimit'] = [
+			'class' => RateLimit::class,
+			'only' => ['index', 'speak', 'conversation', 'send-conversation'],
+			'limit' => 60,
+			'window' => 900,
+			'identityParams' => ['conversation_id'],
+			'identityLimit' => 60,
+			'identityWindow' => 900,
+			'keyPrefix' => 'ratelimit:embed',
+		];
 		$behaviors['verbs'] = [
 			'class' => VerbFilter::class,
 			'actions' => [

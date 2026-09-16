@@ -73,6 +73,12 @@ class SiteController extends MainController
 				'only' => ['login', 'signup', 'reset-password', 'activate', 'confirm-login', 'assume-identity'],
 				'limit' => 10,
 				'window' => 900,
+				// Also counted per account named, which is the shape an address counter
+				// cannot see: many addresses working on one login, or one inbox being
+				// flooded with reset mail.
+				'identityParams' => ['username', 'email', 'phone'],
+				'identityLimit' => 10,
+				'identityWindow' => 3600,
 				'keyPrefix' => 'ratelimit:credentials',
 			],
 			// These each send a mail on submission, so they get their own counter over a
@@ -82,6 +88,9 @@ class SiteController extends MainController
 				'only' => ['contact', 'subscribe', 'check', 'testimonial'],
 				'limit' => 10,
 				'window' => 3600,
+				'identityParams' => ['email', 'phone'],
+				'identityLimit' => 5,
+				'identityWindow' => 3600,
 				'keyPrefix' => 'ratelimit:messaging',
 			],
 			'access' => [
