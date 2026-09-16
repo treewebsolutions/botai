@@ -38,6 +38,12 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  */
 class Workspace extends CommonActiveRecord
 {
+	/**
+	 * Top-level directories inside a tenant that hold the tenant's own files rather than
+	 * anything the installer put there, and so survive a reinstall.
+	 */
+	const TENANT_OWNED_DIRECTORIES = ['uploads'];
+
 	const TYPE_SUBSCRIBER = 1;
 	const TYPE_DEMO = 2;
 
@@ -1106,7 +1112,11 @@ class Workspace extends CommonActiveRecord
 	{
 		try {
 			if ($reinstall) {
-				if (!$this->uninstall()) {
+				// Keep what belongs to the tenant rather than to the installer. A
+				// reinstall rebuilds the directory, the links and the routing; the files
+				// the tenant uploaded are not ours to throw away, any more than its
+				// database was.
+				if (!$this->uninstall(true)) {
 					throw new \Exception('Cannot reinstall the workspace.');
 				}
 			}
@@ -1154,11 +1164,42 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Empties a directory, keeping the named top-level entries.
+	 *
+	 * @param string $dirPath
+	 * @param string[] $keep top-level names to leave in place
+	 * @return void
+	 */
+	protected function removeDirectoryExcept($dirPath, array $keep)
+	{
+		// scandir rather than glob: the tree carries dotfiles that matter (.htaccess in
+		// particular), and the glob patterns that include them while excluding "." and
+		// ".." are easy to get subtly wrong.
+		foreach (scandir($dirPath) ?: [] as $name) {
+			if ($name === '.' || $name === '..' || in_array($name, $keep, true)) {
+				continue;
+			}
+
+			$path = $dirPath . '/' . $name;
+			if (is_link($path) || is_file($path)) {
+				@unlink($path);
+			} elseif (is_dir($path)) {
+				FileHelper::removeDirectory($path);
+			}
+		}
+	}
+
+	/**
 	 * Uninstalls the Workspace database and its directory structure.
 	 *
+	 * Everything under the tenant directory is the installer's to rebuild except
+	 * {@see TENANT_OWNED_DIRECTORIES}, which hold what the tenant put there.
+	 *
+	 * @param bool $preserveTenantData keep those directories (a reinstall); false deletes
+	 *                                 the whole tree, which is what a permanent removal means
 	 * @return bool
 	 */
-	public function uninstall()
+	public function uninstall($preserveTenantData = false)
 	{
 		try {
 			// Baza de date NU se mai şterge.
@@ -1195,7 +1236,11 @@ class Workspace extends CommonActiveRecord
 			}
 
 			if ($dirPath = $this->getDirectoryPath()) {
-				FileHelper::removeDirectory($dirPath);
+				if ($preserveTenantData) {
+					$this->removeDirectoryExcept($dirPath, static::TENANT_OWNED_DIRECTORIES);
+				} else {
+					FileHelper::removeDirectory($dirPath);
+				}
 			}
 			return true;
 		} catch (\Exception $e) {
