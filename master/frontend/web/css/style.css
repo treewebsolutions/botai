@@ -2968,6 +2968,18 @@ body.overlay-context > .overlay-wrapper {
 .select2-selection__clear {
     cursor: pointer; }
 
+/* Krajee's theme drops the clear "x" 6px lower than the dropdown arrow; center
+   both in the control instead of positioning them independently. */
+.select2-container--krajee-bs3 .select2-selection--single .select2-selection__clear,
+.select2-container--krajee-bs3 .select2-selection--multiple .select2-selection__clear,
+.select2-container--krajee-bs3 .select2-selection--single .select2-selection__arrow {
+    top: 0;
+    bottom: 0;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center; }
+
 .input-group.s2-input-group > .input-group-btn {
     width: 1%;
     height: 100%; }
