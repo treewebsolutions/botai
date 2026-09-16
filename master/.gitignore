@@ -38,8 +38,10 @@ phpunit.phar
 # backups dir
 /_backups
 
-# uploads dir
-/uploads
+# uploads dir - the contents are runtime data, but the hardening
+# .htaccess must ship with the app or a fresh deploy executes uploads
+/uploads/*
+!/uploads/.htaccess
 
 # MySQL Workbench backup files
 *.mwb.bak
