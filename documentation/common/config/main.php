@@ -11,6 +11,7 @@ return [
 	'bootstrap' => [
 		'tws\Bootstrap',
 		'common\components\ApplicationBootstrap',
+		'common\components\SecurityHeaders',
 	],
 	'modules' => [
 		'translatemanager' => [

@@ -69,7 +69,9 @@ RUN if [ -n "$EXTRA_APT_PACKAGES" ]; then \
     fi
 
 # Enable Apache modules
-RUN a2enmod ssl rewrite
+# headers: the .htaccess files send the security headers through mod_headers,
+# and an <IfModule> guard would otherwise skip them silently.
+RUN a2enmod ssl rewrite headers
 
 # Recommended PHP.ini settings
 RUN { \

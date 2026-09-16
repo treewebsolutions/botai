@@ -15,6 +15,17 @@ class DefaultController extends Controller
 
 	/**
 	 * @inheritdoc
+	 *
+	 * The widget is framed on the customer's own site, so SameSite keeps the
+	 * session cookie - and with it the CSRF token - away from these requests.
+	 * There is no ambient authority to abuse either: a conversation is
+	 * addressed by the token the widget keeps in localStorage, which a
+	 * cross-site form cannot read or replay.
+	 */
+	public $enableCsrfValidation = false;
+
+	/**
+	 * @inheritdoc
 	 */
 	public function behaviors()
 	{

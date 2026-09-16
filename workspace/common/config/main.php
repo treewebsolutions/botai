@@ -10,6 +10,7 @@ return [
 	],
 	'bootstrap' => [
 		'common\components\ApplicationBootstrap',
+		'common\components\SecurityHeaders',
 		'common\components\WorkspaceBootstrap',
 		'common\components\Scraper',
 	],

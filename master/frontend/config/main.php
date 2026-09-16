@@ -33,7 +33,7 @@ return [
 		'request' => [
 			'baseUrl' => '',
 			'csrfParam' => '_csrf',
-			'enableCsrfValidation' => false,
+			'enableCsrfValidation' => true,
 			'enableCookieValidation' => true,
 			'enableCsrfCookie' => false,
 			'csrfCookie' => [

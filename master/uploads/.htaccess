@@ -39,6 +39,8 @@ RemoveType .php .phtml .phar .php3 .php4 .php5 .php7 .php8 .phps
 </IfModule>
 
 # 3. Never let a browser sniff a stored file into something executable.
+#    setifempty, not "always set", so this does not duplicate the value the
+#    document-root .htaccess already sends.
 <IfModule mod_headers.c>
-	Header always set X-Content-Type-Options "nosniff"
+	Header setifempty X-Content-Type-Options "nosniff"
 </IfModule>
