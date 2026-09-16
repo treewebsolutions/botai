@@ -131,6 +131,26 @@ $this->params['actions'] = [
 				'filter' => ['text'],
 			],
 			[
+				'data' => 'characters',
+				'title' => Yii::t('label', 'Characters'),
+				'filter' => ['text'],
+			],
+			[
+				'data' => 'text',
+				'title' => Yii::t('label', 'Indexed Text'),
+				'filter' => ['text'],
+			],
+			[
+				'data' => 'indexed',
+				'title' => Yii::t('label', 'Indexed'),
+				'filter' => ['text'],
+			],
+			[
+				'data' => 'openai_file_id',
+				'title' => Yii::t('label', 'File ID'),
+				'filter' => ['text'],
+			],
+			[
 				'data' => 'counter',
 				'title' => Yii::t('label', 'Counter'),
 				'filter' => ['text'],

@@ -125,6 +125,10 @@ class Scraper extends Component
 			]);
 		}
 
+		// The visible text of the page, extracted once here rather than on every sync. It
+		// is what goes into the vector store, so storing it makes what will be indexed
+		// something you can look at instead of something recomputed out of sight.
+		$page->text = OpenAiRecordVectorStoreService::htmlToPlainText((string) $page->content);
 		$page->characters = mb_strlen((string) $page->content);
 
 		// Save the page record in the database

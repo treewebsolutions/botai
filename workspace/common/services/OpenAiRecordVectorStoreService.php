@@ -801,7 +801,12 @@ class OpenAiRecordVectorStoreService
 		$lines[] = self::indexPropertyLine('description', self::extractMetaDescription($html));
 		$lines[] = self::indexPropertyLine('language', self::extractLanguage($html));
 		$lines[] = self::indexPropertyLine('scraped_at', (string) ($page->updated_at ?: $page->created_at));
-		$text = self::htmlToPlainText($html);
+		// The text the scraper extracted when it fetched the page. Pages stored before the
+		// column existed have none, so the HTML is still converted here for them.
+		$text = trim((string) $page->text);
+		if ($text === '') {
+			$text = self::htmlToPlainText($html);
+		}
 		if (mb_strlen($text) > self::INDEX_TEXT_MAX_LENGTH) {
 			$text = mb_substr($text, 0, self::INDEX_TEXT_MAX_LENGTH);
 		}

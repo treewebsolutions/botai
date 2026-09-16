@@ -4,6 +4,7 @@ namespace backend\modules\nomenclature\models;
 
 use common\helpers\DateHelper;
 use common\models\Page;
+use common\models\RecordVectorIndex;
 use common\widgets\datatable\DataTableAction;
 use Yii;
 use yii\db\ActiveQuery;
@@ -24,6 +25,8 @@ class PageSearch extends DataTableAction
 			->select([
 				'p.id',
 				'p.url',
+				'p.characters',
+				'p.text',
 				'p.counter',
 				'p.created_by',
 				'p.created_at',
@@ -31,6 +34,18 @@ class PageSearch extends DataTableAction
 				'p.status',
 			])
 			->joinWith([
+				// Whether the page reached the vector store, and under which file. Left
+				// join: a page that was never indexed simply has no row here.
+				'recordVectorIndex rvi' => function (ActiveQuery $query) {
+					$query->select([
+						'rvi.id',
+						'rvi.record_id',
+						'rvi.openai_file_id',
+						'rvi.status',
+						'rvi.indexed_at',
+						'rvi.error_message',
+					]);
+				},
 				'creator cr' => function (ActiveQuery $query) {
 					$query->select([
 						'cr.id',
@@ -122,6 +137,51 @@ class PageSearch extends DataTableAction
 				},
 				'counter' => function (Page $model) {
 					return $model->counter ?: '&mdash;';
+				},
+				'text' => function (Page $model) {
+					// What will actually be indexed. HTML length says a response arrived;
+					// this says there was something readable in it.
+					$length = mb_strlen(trim((string) $model->text));
+
+					return $length
+						? Yii::$app->formatter->asInteger($length)
+						: Html::tag('span', Yii::t('label', 'No text'), ['class' => 'label label-warning']);
+				},
+				'characters' => function (Page $model) {
+					// What the last fetch actually captured. A page the scraper reached but
+					// that came back empty is the difference between "it ran" and "it worked".
+					return $model->characters
+						? Yii::$app->formatter->asInteger($model->characters)
+						: Html::tag('span', Yii::t('label', 'Empty'), ['class' => 'label label-warning']);
+				},
+				'indexed' => function (Page $model) {
+					$index = $model->recordVectorIndex;
+					if ($index === null) {
+						return Html::tag('span', Yii::t('label', 'Not indexed'), ['class' => 'label label-block label-default']);
+					}
+
+					$status = RecordVectorIndex::getStatusLabels()[$index->status] ?? null;
+					$label = Html::tag('span', $status['label'] ?? $index->status, [
+						'class' => 'label label-block label-' . ($status['color'] ?? 'default'),
+						// The file the page became in the vector store, and when - the
+						// answer to "is this page actually in there".
+						'title' => trim(($index->openai_file_id ?: '') . ' ' . ($index->indexed_at ? '(' . Yii::$app->formatter->asDatetime($index->indexed_at) . ')' : '')),
+					]);
+
+					if ($index->error_message) {
+						$label .= ' ' . Html::tag('span', '<span class="fa fa-exclamation-triangle"></span>', [
+							'title' => Html::encode($index->error_message),
+						]);
+					}
+
+					return $label;
+				},
+				'openai_file_id' => function (Page $model) {
+					$index = $model->recordVectorIndex;
+
+					return $index && $index->openai_file_id
+						? Html::tag('code', Html::encode($index->openai_file_id))
+						: '&mdash;';
 				},
 				'created_by' => function (Page $model) {
 					return $model->creator ? $model->creator->getFullName() : '&mdash;';

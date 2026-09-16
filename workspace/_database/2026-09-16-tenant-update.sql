@@ -188,6 +188,23 @@ WHERE `deleted` = 0 AND `status` = 1
   AND (SELECT * FROM (SELECT COUNT(*) FROM `knowledge_base` WHERE `deleted` = 0 AND `status` = 1) AS c) = 1
   AND (SELECT * FROM (SELECT COUNT(*) FROM `knowledge_base` WHERE `deleted` = 0 AND `default` = 1) AS d) = 0;
 
+-- ── 4c. textul curat al paginii ────────────────────────────────────────────
+--
+-- `page`.`content` e răspunsul HTTP brut — HTML cu tot cu script şi style. În
+-- vector store urcă doar textul vizibil, extras la fiecare indexare şi nevăzut
+-- de nimeni între timp. Stocat, se vede în interfaţă ce anume va fi indexat şi
+-- nu se mai recalculează la fiecare sincronizare.
+--
+-- Rândurile existente rămân NULL: serviciul extrage din HTML ca până acum, iar
+-- coloana se completează la următoarea trecere a scraper-ului peste pagină.
+
+SET @sql := IF(
+    (SELECT COUNT(*) FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'page' AND column_name = 'text') = 0,
+    'ALTER TABLE `page` ADD `text` MEDIUMTEXT NULL DEFAULT NULL AFTER `content`',
+    'DO 0');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
 -- ── 5. integrările locale, şterse definitiv ────────────────────────────────
 --
 --     Rulează DOAR după ce cheia e pe hub şi ai confirmat că un tenant o vede

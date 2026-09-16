@@ -65,7 +65,7 @@ class Page extends CommonActiveRecord
     public function rules()
     {
         return [
-            [['content'], 'string'],
+            [['content', 'text'], 'string'],
             [['characters', 'counter', 'created_by', 'updated_by', 'status', 'deleted'], 'integer'],
             [['created_at', 'updated_at'], 'safe'],
             [['status'], 'required'],
