@@ -8,6 +8,7 @@ use Box\Spout\Common\Type;
 use Box\Spout\Writer\Style\StyleBuilder;
 use Box\Spout\Writer\WriterFactory;
 use common\helpers\Inflector;
+use common\widgets\datatable\DataTableAction;
 use common\helpers\UploadHelper;
 use JeroenDesloovere\VCard\Formatter\VcfFormatter;
 use JeroenDesloovere\VCard\VCard;
@@ -148,7 +149,7 @@ class ExportController extends MainController
 			$row = [];
 
 			foreach ($columns as $column) {
-				$row[] = strip_tags(html_entity_decode($record[$column['name']]));
+				$row[] = $this->neutralizeFormula(strip_tags(html_entity_decode($record[$column['name']])));
 			}
 
 			$writer->addRow($row);
@@ -187,7 +188,7 @@ class ExportController extends MainController
 				$attributes = is_array($attributes) ? $attributes : (array) $attributes;
 
 				foreach ($attributes as $attribute) {
-					$value = strip_tags(html_entity_decode($record[$attribute]));
+					$value = $this->neutralizeFormula(strip_tags(html_entity_decode($record[$attribute])));
 
 					if (empty($value) || htmlentities($value) == '&mdash;') {
 						continue;
@@ -254,7 +255,7 @@ class ExportController extends MainController
 		foreach ($records as $record) {
 			$row = [];
 			foreach ($columns as $column) {
-				$value = strip_tags(html_entity_decode($record[$column['name']]));
+				$value = $this->neutralizeFormula(strip_tags(html_entity_decode($record[$column['name']])));
 				if (is_numeric($value)) {
 					$value = (double)$value;
 				}
@@ -344,10 +345,38 @@ class ExportController extends MainController
 	 */
 	protected function getDataTableActionModel($className)
 	{
-		if (class_exists($className)) {
+		// The class name reaches us from the client, so constrain it to the
+		// datatable actions instead of instantiating anything that autoloads.
+		if (is_string($className) && class_exists($className) && is_subclass_of($className, DataTableAction::class)) {
 			return new $className('dt-action', $this->id);
 		}
 
 		throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
 	}
+
+	/**
+	 * Neutralises a value that a spreadsheet would otherwise evaluate.
+	 *
+	 * Box\Spout writes what it is given, so a record whose text starts with
+	 * =, +, - or @ becomes a live formula when the recipient opens the export.
+	 * Prefixing a single quote pins the cell to text; leading control
+	 * characters are stripped first so they cannot hide the trigger.
+	 *
+	 * @param mixed $value
+	 * @return mixed
+	 */
+	protected function neutralizeFormula($value)
+	{
+		if (!is_string($value) || $value === '') {
+			return $value;
+		}
+
+		$trimmed = ltrim($value, "\t\r\n \0\x0B");
+		if ($trimmed !== '' && strpos("=+-@", $trimmed[0]) !== false) {
+			return "'" . $trimmed;
+		}
+
+		return $value;
+	}
+
 }

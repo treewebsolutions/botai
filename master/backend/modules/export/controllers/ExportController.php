@@ -7,6 +7,7 @@ use backend\modules\export\widgets\export\Export;
 use Box\Spout\Common\Type;
 use Box\Spout\Writer\WriterFactory;
 use common\helpers\Inflector;
+use common\widgets\datatable\DataTableAction;
 use kartik\mpdf\Pdf;
 use Yii;
 use yii\filters\AccessControl;
@@ -77,7 +78,7 @@ class ExportController extends MainController
 			} elseif ($bodyParams['format'] == Export::FORMAT_PDF) {
 				$result = $this->exportAsPdf($bodyParams, $columns, $records);
 			}
-			$result = Url::to(['download', 'file' => Yii::$app->security->maskToken(Json::encode($result))]);
+			$result = Url::to(['download', 'file' => $this->signDownload($result)]);
 			if (empty($result)) {
 				throw new \Exception(Yii::t('common', 'Cannot export the requested data.'));
 			}
@@ -102,7 +103,7 @@ class ExportController extends MainController
 	 * @throws NotFoundHttpException if the file does not exist.
 	 */
 	public function actionDownload($file) {
-		$file = Json::decode(Yii::$app->security->unmaskToken($file));
+		$file = $this->verifyDownload($file);
 
 		if (!is_file($file['path'])) {
 			throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
@@ -111,6 +112,79 @@ class ExportController extends MainController
 		return Yii::$app->response->sendFile($file['path'], $file['name'])->on(Response::EVENT_AFTER_SEND, function ($event) {
 			@unlink($event->data);
 		}, $file['path']);
+	}
+
+	/**
+	 * Signs the descriptor of a freshly generated export so the download link
+	 * cannot be pointed at another file.
+	 *
+	 * maskToken() only defeats BREACH - it is reversible by anyone - so on its
+	 * own it let a caller mint a token for any path the web user can read, have
+	 * it sent back and then deleted.
+	 *
+	 * @param array $file the `path` and `name` of the generated file
+	 * @return string
+	 */
+	protected function signDownload($file)
+	{
+		$file['user_id'] = Yii::$app->user->id;
+
+		return base64_encode(Yii::$app->security->hashData(
+			Json::encode($file),
+			$this->getDownloadSignatureKey()
+		));
+	}
+
+	/**
+	 * Verifies a download descriptor produced by {@see signDownload()}.
+	 *
+	 * @param string $token
+	 * @return array the `path` and `name` of the generated file
+	 * @throws NotFoundHttpException if the token is forged, expired or belongs
+	 * to another user, or if the path escaped the export directory
+	 */
+	protected function verifyDownload($token)
+	{
+		$data = base64_decode((string) $token, true);
+		if ($data === false) {
+			throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
+		}
+
+		$data = Yii::$app->security->validateData($data, $this->getDownloadSignatureKey());
+		if ($data === false) {
+			throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
+		}
+
+		try {
+			$file = Json::decode($data);
+		} catch (\Exception $e) {
+			throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
+		}
+
+		// An export belongs to the account that asked for it.
+		if (empty($file['path']) || empty($file['name']) || ($file['user_id'] ?? null) !== Yii::$app->user->id) {
+			throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
+		}
+
+		// Defence in depth: whatever was signed, only serve from @runtime.
+		$path = realpath($file['path']);
+		$root = realpath(Yii::getAlias('@runtime'));
+		if ($path === false || $root === false || strpos($path, $root . DIRECTORY_SEPARATOR) !== 0) {
+			throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
+		}
+		$file['path'] = $path;
+
+		return $file;
+	}
+
+	/**
+	 * The key the export download signature is derived from.
+	 *
+	 * @return string
+	 */
+	protected function getDownloadSignatureKey()
+	{
+		return Yii::$app->request->cookieValidationKey . '|export-download';
 	}
 
 	/**
@@ -148,7 +222,7 @@ class ExportController extends MainController
 			foreach ($records as $record) {
 				$row = [];
 				foreach ($columns as $column) {
-					$row[] = strip_tags(html_entity_decode($record[$column['name']]));
+					$row[] = $this->neutralizeFormula(strip_tags(html_entity_decode($record[$column['name']])));
 				}
 				$writer->addRow($row);
 			}
@@ -184,7 +258,7 @@ class ExportController extends MainController
 				$vCard = new \JeroenDesloovere\VCard\VCard();
 				foreach ($bodyParams['config']['map'] as $key => $attributes) {
 					foreach ((array) $attributes as $attribute) {
-						$value = strip_tags(html_entity_decode($record[$attribute]));
+						$value = $this->neutralizeFormula(strip_tags(html_entity_decode($record[$attribute])));
 						if (empty($value) || htmlentities($value) == '&mdash;') {
 							continue;
 						}
@@ -249,7 +323,7 @@ class ExportController extends MainController
 			foreach ($records as $record) {
 				$row = [];
 				foreach ($columns as $column) {
-					$row[] = strip_tags(html_entity_decode($record[$column['name']]));
+					$row[] = $this->neutralizeFormula(strip_tags(html_entity_decode($record[$column['name']])));
 				}
 				$writer->addRow($row);
 			}
@@ -341,10 +415,38 @@ class ExportController extends MainController
 	 */
 	protected function getDataTableActionModel($className)
 	{
-		if (class_exists($className)) {
+		// The class name reaches us from the client, so constrain it to the
+		// datatable actions instead of instantiating anything that autoloads.
+		if (is_string($className) && class_exists($className) && is_subclass_of($className, DataTableAction::class)) {
 			return new $className('dt-action', $this->id);
 		}
 
 		throw new NotFoundHttpException(Yii::t('common', 'The requested page does not exist.'));
 	}
+
+	/**
+	 * Neutralises a value that a spreadsheet would otherwise evaluate.
+	 *
+	 * Box\Spout writes what it is given, so a record whose text starts with
+	 * =, +, - or @ becomes a live formula when the recipient opens the export.
+	 * Prefixing a single quote pins the cell to text; leading control
+	 * characters are stripped first so they cannot hide the trigger.
+	 *
+	 * @param mixed $value
+	 * @return mixed
+	 */
+	protected function neutralizeFormula($value)
+	{
+		if (!is_string($value) || $value === '') {
+			return $value;
+		}
+
+		$trimmed = ltrim($value, "\t\r\n \0\x0B");
+		if ($trimmed !== '' && strpos("=+-@", $trimmed[0]) !== false) {
+			return "'" . $trimmed;
+		}
+
+		return $value;
+	}
+
 }
