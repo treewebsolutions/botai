@@ -357,9 +357,14 @@ class UserController extends Controller
 	{
 		$model = new LoginForm();
 		if ($model->load(Yii::$app->request->bodyParams, '') && $model->login()) {
+			$user = User::findProfile($model->username);
+			// The caller has just proven it owns this account, so it is the one
+			// response allowed to carry the bearer token.
+			$user->exposeAuthKey = true;
+
 			return [
 				'message' => Yii::t('api', 'Login successful.'),
-				'data' => User::findProfile($model->username),
+				'data' => $user,
 			];
 		}
 		if ($model->hasErrors()) {

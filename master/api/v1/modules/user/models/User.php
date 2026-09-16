@@ -16,14 +16,20 @@ use yii\web\Linkable;
 class User extends \common\models\User implements Linkable
 {
 	/**
+	 * @var bool Whether this representation may carry `auth_key`. The key is the
+	 * bearer token, so only the account that has just authenticated may receive
+	 * its own; it must never appear in a listing or in another user's record.
+	 */
+	public $exposeAuthKey = false;
+
+	/**
 	 * {@inheritdoc}
 	 */
 	public function fields()
 	{
-		return [
+		$fields = [
 			'id',
 			'parent_id',
-			'auth_key',
 			'email',
 			'phone',
 			'first_name',
@@ -50,6 +56,12 @@ class User extends \common\models\User implements Linkable
 				return $this->getCustomWorkspaces();
 			},
 		];
+
+		if ($this->exposeAuthKey) {
+			$fields[] = 'auth_key';
+		}
+
+		return $fields;
 	}
 
 	/**
