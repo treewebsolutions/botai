@@ -262,6 +262,9 @@ class Assistant extends CommonActiveRecord
 	 */
 	public static function getGPTModels($provider = null)
 	{
+		// Curated entries: the ones worth recommending, with a description. Anything the
+		// provider has published since is appended by [[getLiveModels()]] below, so the
+		// list stays current without this file being edited every time a model ships.
 		$openaiModels = [
 			'gpt-5.5' => Yii::t('backend', 'GPT-5.5 – Flagship model for complex reasoning and coding'),
 			'gpt-5.5-pro' => Yii::t('backend', 'GPT-5.5 Pro – Highest accuracy for high-stakes work'),
@@ -273,19 +276,106 @@ class Assistant extends CommonActiveRecord
 			'gpt-4o-mini' => Yii::t('backend', 'GPT-4o Mini – Cost-efficient model for everyday tasks (legacy)'),
 		];
 		$claudeModels = [
-			'claude-fable-5' => Yii::t('backend', 'Claude Fable 5 – Most capable model for demanding reasoning and agentic work'),
-			'claude-opus-4-8' => Yii::t('backend', 'Claude Opus 4.8 – Frontier model for complex reasoning and coding'),
-			'claude-sonnet-4-6' => Yii::t('backend', 'Claude Sonnet 4.6 – Balanced speed and intelligence'),
+			'claude-fable-5-1' => Yii::t('backend', 'Claude Fable 5.1 – Most capable model for demanding reasoning and agentic work'),
+			'claude-opus-5' => Yii::t('backend', 'Claude Opus 5 – Frontier model for complex reasoning and coding'),
+			'claude-sonnet-5' => Yii::t('backend', 'Claude Sonnet 5 – Balanced speed and intelligence'),
 			'claude-haiku-4-5' => Yii::t('backend', 'Claude Haiku 4.5 – Fast and lightweight model'),
+			// Previous generation, kept for existing assistants.
+			'claude-fable-5' => Yii::t('backend', 'Claude Fable 5 – Previous flagship (legacy)'),
+			'claude-opus-4-8' => Yii::t('backend', 'Claude Opus 4.8 – Previous frontier model (legacy)'),
+			'claude-sonnet-4-6' => Yii::t('backend', 'Claude Sonnet 4.6 – Previous balanced model (legacy)'),
 		];
 		$provider = $provider !== null ? (int) $provider : null;
 
 		if ($provider === static::PROVIDER_OPENAI) {
-			return $openaiModels;
+			return static::withLiveModels($openaiModels, static::PROVIDER_OPENAI);
 		}
 		if ($provider === static::PROVIDER_CLAUDE) {
 			return $claudeModels;
 		}
-		return array_merge($openaiModels, $claudeModels);
+
+		return array_merge(static::withLiveModels($openaiModels, static::PROVIDER_OPENAI), $claudeModels);
+	}
+
+	/**
+	 * Appends whatever the provider currently publishes that the curated list does not
+	 * already name.
+	 *
+	 * A curated list goes stale the moment a model ships, and nobody notices until an
+	 * assistant is pointed at a name the API no longer serves. Asking the provider keeps
+	 * the dropdown honest; the curated entries stay first and keep their descriptions.
+	 *
+	 * @param array $curated
+	 * @param int $provider
+	 * @return array
+	 */
+	protected static function withLiveModels(array $curated, $provider)
+	{
+		$live = static::getLiveModels($provider);
+		foreach ($live as $id) {
+			if (!array_key_exists($id, $curated)) {
+				$curated[$id] = $id;
+			}
+		}
+
+		return $curated;
+	}
+
+	/**
+	 * Model ids the provider currently serves, or an empty list when it cannot be asked.
+	 *
+	 * Cached, because this renders on a form: a provider that is slow or down must not
+	 * hold the page, and the list changes on the order of weeks. Any failure - no key, a
+	 * timeout, a refused request - returns nothing and leaves the curated list standing.
+	 *
+	 * @param int $provider
+	 * @return string[]
+	 */
+	protected static function getLiveModels($provider)
+	{
+		if ((int) $provider !== static::PROVIDER_OPENAI) {
+			return [];
+		}
+
+		$cacheKey = ['assistant.live-models', 'provider' => (int) $provider];
+
+		return Yii::$app->cache->getOrSet($cacheKey, function () {
+			$integration = Integration::resolveOpenAI();
+			$apiKey = $integration !== null ? (string) $integration->getApiKey() : '';
+			if ($apiKey === '') {
+				return [];
+			}
+
+			try {
+				$response = (new \yii\httpclient\Client())
+					->createRequest()
+					->setMethod('GET')
+					->setUrl('https://api.openai.com/v1/models')
+					->addHeaders(['Authorization' => "Bearer {$apiKey}"])
+					->setOptions(['timeout' => 5])
+					->send();
+
+				if (!$response->isOk || !isset($response->data['data'])) {
+					return [];
+				}
+
+				// Only the chat-completion families: the endpoint also lists embeddings,
+				// audio, moderation and image models, none of which an assistant can use.
+				$ids = [];
+				foreach ($response->data['data'] as $model) {
+					$id = (string) ($model['id'] ?? '');
+					if ($id !== '' && preg_match('/^(gpt|o[0-9])/i', $id) && !preg_match('/(audio|realtime|transcribe|tts|image|search|embedding|moderation)/i', $id)) {
+						$ids[] = $id;
+					}
+				}
+				sort($ids);
+
+				return $ids;
+			} catch (\Throwable $e) {
+				Yii::warning('Could not list the OpenAI models: ' . $e->getMessage(), __METHOD__);
+
+				return [];
+			}
+		}, 6 * 3600);
 	}
 }
