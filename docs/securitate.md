@@ -85,6 +85,9 @@ Fixurile de cod nu anulează expunerea deja produsă:
 | Rate limiting pe credențiale | 10 încercări / 15 min pe IP; NAT-ul unui birou contează ca un client |
 | Al doilea contor, pe identificator | Un atacator poate bloca un cont cunoscut de la propria resetare; limita e mai generoasă tocmai de aceea |
 | Throttling pe widget-ul de chat | 60 de ture / 15 min pe conversație |
+| Autentificare doar cu email | Câmpul postat e `LoginForm[email]`, nu `LoginForm[username]` — inclusiv în `POST /api/v1/user/login`. Un singur cont din tot sistemul avea username (`admin`) și are și el email, deci nimeni nu rămâne pe dinafară |
+| `username` și `phone` nu mai sunt unice | Două conturi pot împărți un număr de telefon. Nimic nu mai scrie `user.username`; indexul `username_UNIQUE` rămâne în baza de date, inert |
+| Resetarea de parolă din workspace nu mai spune dacă adresa există | Răspunsul e identic pentru o adresă cunoscută și una necunoscută, ca pe master |
 
 ## Convenții de respectat în cod nou
 
@@ -98,7 +101,11 @@ Fixurile de cod nu anulează expunerea deja produsă:
   coloane `raw`: `Html::encode()`.
 - **Endpoint nou în API**: verifică proprietarul, nu doar id-ul.
 - **Acțiune care atribuie roluri**: treci prin `RoleHelper`.
-- **Endpoint public care trimite mail sau verifică credențiale**: pune `RateLimit`.
+- **Endpoint public care trimite mail sau verifică credențiale**: pune `RateLimit`,
+  cu `identityParams => ['email']`.
+- **Căutarea unui cont după credențial**: `User::findByEmail()`. Nu adăuga `username`
+  sau `phone` în `OR` — sunt coloane descriptive, neunice și neverificate, iar cine
+  întreabă decide altfel pe cine loghezi.
 - **Markdown randat în widget**: treci prin `sanitizeMarkdownHtml()`, niciodată direct
   `.html(marked.parse(...))`.
 

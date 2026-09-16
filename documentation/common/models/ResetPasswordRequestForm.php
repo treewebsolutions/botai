@@ -10,9 +10,9 @@ use tws\helpers\Url;
 class ResetPasswordRequestForm extends Model
 {
 	/**
-	 * @var string The email/phone where the reset password token/link will be sent.
+	 * @var string The email address the reset link is sent to.
 	 */
-	public $username;
+	public $email;
 
 	/**
 	 * @var string The honeypot field.
@@ -36,8 +36,9 @@ class ResetPasswordRequestForm extends Model
 	public function rules()
 	{
 		return [
-			[['username'], 'required'],
-			[['username'], 'trim'],
+			[['email'], 'required'],
+			[['email'], 'trim'],
+			['email', 'email'],
 			['workEmail', 'safe'],
             ['captchaResponse', 'safe'],
         ];
@@ -49,7 +50,7 @@ class ResetPasswordRequestForm extends Model
 	public function attributeLabels()
 	{
 		return [
-			'username' => Yii::t('label', 'Email'),
+			'email' => Yii::t('label', 'Email'),
 		];
 	}
 
@@ -61,7 +62,7 @@ class ResetPasswordRequestForm extends Model
 	public function getUser()
 	{
 		if (!$this->_user) {
-			$this->_user = User::findByUsername($this->username);
+			$this->_user = User::findByEmail($this->email);
 		}
 		return $this->_user;
 	}
@@ -76,7 +77,7 @@ class ResetPasswordRequestForm extends Model
 		try {
 			$template = Template::findDefaultByTypeAndVariant(Template::TYPE_EMAIL, Template::EMAIL_VARIANT_PASSWORD_RESET);
 			if (!$template || !($templateTranslation = $template->getTranslation())) {
-				$this->addError('username', Yii::t('common', 'Cannot send reset password message for this user.'));
+				$this->addError('email', Yii::t('common', 'Cannot send reset password message for this user.'));
 				throw new \Exception();
 			}
 			$user = $this->getUser();
@@ -123,14 +124,14 @@ class ResetPasswordRequestForm extends Model
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
 			if (!($user = $this->getUser())) {
-				$this->addError('username', Yii::t('yii', '{attribute} is invalid.', [
-					'attribute' => $this->getAttributeLabel('username'),
+				$this->addError('email', Yii::t('yii', '{attribute} is invalid.', [
+					'attribute' => $this->getAttributeLabel('email'),
 				]));
 				throw new \Exception();
 			}
 			$user->password_reset_token = User::generatePasswordResetToken();
 			if (!$user->save(false)) {
-				$this->addError('username', Yii::t('common', 'Cannot reset password for this user.'));
+				$this->addError('email', Yii::t('common', 'Cannot reset password for this user.'));
 				throw new \Exception();
 			}
 

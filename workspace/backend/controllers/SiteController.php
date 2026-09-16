@@ -33,7 +33,7 @@ class SiteController extends MainController
 				'window' => 900,
 				// Also counted per account named, which is the shape an address counter
 				// cannot see: many addresses working on one login.
-				'identityParams' => ['username', 'email'],
+				'identityParams' => ['email'],
 				'identityLimit' => 10,
 				'identityWindow' => 3600,
 				'keyPrefix' => 'ratelimit:admin',
@@ -166,12 +166,10 @@ class SiteController extends MainController
 		$model = new PasswordResetRequestForm();
 
 		if ($model->load(Yii::$app->request->post()) && $model->validate()) {
-			if ($model->sendEmail()) {
-				Yii::$app->session->setFlash('success', Yii::t('common', 'Check your email for further instructions.'));
-				return $this->goHome();
-			} else {
-				Yii::$app->session->setFlash('error', Yii::t('common', 'Sorry, we are unable to reset password for the provided email address.'));
-			}
+			// One answer for every address, known or not - see sendEmail().
+			$model->sendEmail();
+			Yii::$app->session->setFlash('success', Yii::t('common', 'Check your email for further instructions.'));
+			return $this->goHome();
 		}
 
 		return $this->render('request-password-reset', [

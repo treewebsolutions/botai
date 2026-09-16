@@ -167,7 +167,7 @@ class ResetPasswordForm extends Model
                 $model->password_hash = $user->password_hash;
                 $model->password_reset_token = null;
 				if (!$model->save(false)) {
-					$this->addError('username', Yii::t('common', 'Cannot reset password for this user.'));
+					$this->addError('token', Yii::t('common', 'Cannot reset password for this user.'));
 					throw new \Exception();
 				} else {
                     $workspace = Workspace::findOne(['id' => $model->workspace_id]);

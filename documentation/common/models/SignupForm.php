@@ -80,7 +80,10 @@ class SignupForm extends Model
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'trim'],
 			['password', PasswordValidator::class],
 			['email', 'email'],
-			[['email', 'phone'], 'unique', 'targetClass' => 'common\models\User'],
+			// Only the credential has to be free. Requiring a unique phone number
+			// rejected perfectly good signups and told the caller which numbers were
+			// already registered here.
+			[['email'], 'unique', 'targetClass' => 'common\models\User'],
 			['acceptTerms', 'boolean'],
 			['workEmail', 'safe'],
             ['captchaResponse', 'safe'],

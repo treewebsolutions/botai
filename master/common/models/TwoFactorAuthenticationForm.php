@@ -103,7 +103,7 @@ class TwoFactorAuthenticationForm extends Model
 				$workspaceUser->login_token = null;
 				$workspaceUser->last_login = $currentDate;
 				if (!$workspaceUser->save(false)) {
-					$this->addError('username', Yii::t('common', 'Cannot confirm login for this user.'));
+					$this->addError('token', Yii::t('common', 'Cannot confirm login for this user.'));
 					throw new \Exception();
 				}
 				// Set login token in workspace database

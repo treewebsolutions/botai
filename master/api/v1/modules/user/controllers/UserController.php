@@ -53,7 +53,7 @@ class UserController extends Controller
 				'only' => ['login', 'signup', 'request-password-reset', 'reset-password', 'activate'],
 				'limit' => 10,
 				'window' => 900,
-				'identityParams' => ['username', 'email', 'phone'],
+				'identityParams' => ['email'],
 				'identityLimit' => 10,
 				'identityWindow' => 3600,
 			],
@@ -374,7 +374,7 @@ class UserController extends Controller
 	{
 		$model = new LoginForm();
 		if ($model->load(Yii::$app->request->bodyParams, '') && $model->login()) {
-			$user = User::findProfile($model->username);
+			$user = User::findProfile($model->email);
 			// The caller has just proven it owns this account, so it is the one
 			// response allowed to carry the bearer token.
 			$user->exposeAuthKey = true;
@@ -404,7 +404,7 @@ class UserController extends Controller
 		$model->requireCaptcha = false;
 		if ($model->load(Yii::$app->request->bodyParams, '') && $model->validate() && $model->sendRequest()) {
 			return [
-				'message' => Yii::t('api', 'Check your email/phone for further instructions.'),
+				'message' => Yii::t('api', 'Check your email for further instructions.'),
 			];
 		}
 		if ($model->hasErrors()) {

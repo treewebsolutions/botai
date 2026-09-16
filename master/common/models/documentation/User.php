@@ -104,7 +104,11 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 			[['created_at', 'updated_at', 'last_activity', 'last_login'], 'default'],
 			[['auth_key'], 'string', 'max' => 32],
 			[['password_hash', 'password_reset_token', 'signup_token', 'login_token', 'username', 'email', 'phone', 'first_name', 'middle_name', 'last_name', 'image'], 'string', 'max' => 255],
-			[['username', 'email', 'phone', 'password_reset_token', 'signup_token', 'login_token'], 'unique'],
+			// Only the credential is unique. `username` and `phone` are descriptive
+			// columns nothing authenticates against - and requiring them to be unique
+			// here made the cross-application sync fail: pushing a tenant user up to the
+			// hub was rejected whenever another account already carried that number.
+			[['email', 'password_reset_token', 'signup_token', 'login_token'], 'unique'],
 			[['email'], 'email'],
 			['gender', 'in', 'range' => [static::GENDER_MALE, static::GENDER_FEMALE]],
 			[['parent_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['parent_id' => 'id']],

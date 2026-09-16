@@ -10,9 +10,9 @@ use tws\helpers\Url;
 class TwoFactorAuthenticationRequestForm extends Model
 {
 	/**
-	 * @var string The email/phone where the reset password token/link will be sent.
+	 * @var string The email address the confirmation code is sent to.
 	 */
-	public $username;
+	public $email;
 
 	/**
 	 * @var string The honeypot field.
@@ -31,8 +31,9 @@ class TwoFactorAuthenticationRequestForm extends Model
 	public function rules()
 	{
 		return [
-			[['username'], 'required'],
-			[['username'], 'trim'],
+			[['email'], 'required'],
+			[['email'], 'trim'],
+			['email', 'email'],
 			['verifyCode', 'safe'],
 		];
 	}
@@ -43,18 +44,8 @@ class TwoFactorAuthenticationRequestForm extends Model
 	public function attributeLabels()
 	{
 		return [
-			'username' => Yii::t('label', 'Email') . ' / ' . Yii::t('label', 'Phone'),
+			'email' => Yii::t('label', 'Email'),
 		];
-	}
-
-	/**
-	 * Getter flag that indicates if the username is a valid email.
-	 *
-	 * @return bool
-	 */
-	public function getIsUsernameValidEmail()
-	{
-		return (new \yii\validators\EmailValidator)->validate($this->username);
 	}
 
 	/**
@@ -65,7 +56,7 @@ class TwoFactorAuthenticationRequestForm extends Model
 	public function getUser()
 	{
 		if (!$this->_user) {
-			$user = User::findByUsername($this->username);
+			$user = User::findByEmail($this->email);
 			$this->_user = is_array($user) ? reset($user) : $user;
 		}
 		return $this->_user;
@@ -81,7 +72,7 @@ class TwoFactorAuthenticationRequestForm extends Model
 		try {
 			$template = Template::findDefaultByTypeAndVariant(Template::TYPE_EMAIL, Template::EMAIL_VARIANT_TWO_FACTOR_AUTHENTICATION);
 			if (!$template || !($templateTranslation = $template->getTranslation())) {
-				$this->addError('username', Yii::t('common', 'Cannot send confirm login message for this user.'));
+				$this->addError('email', Yii::t('common', 'Cannot send confirm login message for this user.'));
 				throw new \Exception();
 			}
 			$user = $this->getUser();
@@ -104,8 +95,9 @@ class TwoFactorAuthenticationRequestForm extends Model
 				->setHtmlBody(strtr($templateTranslation->content, $shortCodeValues))
 				->send();
 		} catch (\Exception $e) {
-			print_r($e->getMessage());
-			die();
+			// Was print_r() followed by die(), which answered the login with a raw
+			// exception message and no page at all.
+			Yii::warning('Could not send the two-factor authentication message: ' . $e->getMessage(), __METHOD__);
 			return false;
 		}
 	}
@@ -124,8 +116,8 @@ class TwoFactorAuthenticationRequestForm extends Model
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
 			if (!($user = $this->getUser())) {
-				$this->addError('username', Yii::t('yii', '{attribute} is invalid.', [
-					'attribute' => $this->getAttributeLabel('username'),
+				$this->addError('email', Yii::t('yii', '{attribute} is invalid.', [
+					'attribute' => $this->getAttributeLabel('email'),
 				]));
 				throw new \Exception();
 			}
@@ -150,7 +142,7 @@ class TwoFactorAuthenticationRequestForm extends Model
 				// Set login token for User model
 				$user->login_token = $loginToken;
 				if (!$user->save(false)) {
-					$this->addError('username', Yii::t('common', 'Cannot confirm login for this user.'));
+					$this->addError('email', Yii::t('common', 'Cannot confirm login for this user.'));
 					throw new \Exception();
 				}
 			}
@@ -159,12 +151,12 @@ class TwoFactorAuthenticationRequestForm extends Model
 			/** @var WorkspaceHasUser[] $workspaceUsers */
 			$workspaceUsers = WorkspaceHasUser::find()
 				->andWhere(['user_id' => $user->id])
-				->andWhere(['=', 'email', $this->username])
+				->andWhere(['=', 'email', $this->email])
 				->all();
 			foreach ($workspaceUsers as $workspaceUser) {
 				$workspaceUser->login_token = $loginToken;
 				if (!$workspaceUser->save(false)) {
-					$this->addError('username', Yii::t('common', 'Cannot confirm login for this user.'));
+					$this->addError('email', Yii::t('common', 'Cannot confirm login for this user.'));
 					throw new \Exception();
 				}
 				// Set login token in workspace database
@@ -180,9 +172,7 @@ class TwoFactorAuthenticationRequestForm extends Model
 
 			$dbTransaction->commit();
 
-			if ($this->getIsUsernameValidEmail()) {
-				return $this->sendEmail();
-			}
+			return $this->sendEmail();
 		} catch (\Exception $e) {
 			$dbTransaction->rollBack();
 			return false;

@@ -173,9 +173,9 @@ class RateLimitTest extends WebTestCase
 	{
 		// The shape an address counter cannot see: many clients working on one account,
 		// or one inbox being flooded with reset mail.
-		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['username'], 'identityLimit' => 3]);
+		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['email'], 'identityLimit' => 3]);
 		$action = $this->action();
-		Yii::$app->request->setBodyParams(['username' => 'victim@example.test']);
+		Yii::$app->request->setBodyParams(['email' => 'victim@example.test']);
 
 		for ($i = 0; $i < 3; $i++) {
 			$this->assertTrue($filter->beforeAction($action));
@@ -188,25 +188,25 @@ class RateLimitTest extends WebTestCase
 	public function testIdentifiersAreNormalisedBeforeCounting()
 	{
 		// Casing and padding must not buy extra attempts.
-		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['username'], 'identityLimit' => 2]);
+		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['email'], 'identityLimit' => 2]);
 		$action = $this->action();
 
 		foreach (['victim@example.test', '  VICTIM@Example.test  '] as $variant) {
-			Yii::$app->request->setBodyParams(['username' => $variant]);
+			Yii::$app->request->setBodyParams(['email' => $variant]);
 			$filter->beforeAction($action);
 		}
 
-		Yii::$app->request->setBodyParams(['username' => 'Victim@Example.Test']);
+		Yii::$app->request->setBodyParams(['email' => 'Victim@Example.Test']);
 		$this->expectException(TooManyRequestsHttpException::class);
 		$filter->beforeAction($action);
 	}
 
 	public function testIdentifiersAreFoundInsideTheFormName()
 	{
-		// ActiveForm posts LoginForm[username], not username.
-		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['username'], 'identityLimit' => 1]);
+		// ActiveForm posts LoginForm[email], not email.
+		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['email'], 'identityLimit' => 1]);
 		$action = $this->action();
-		Yii::$app->request->setBodyParams(['LoginForm' => ['username' => 'victim@example.test']]);
+		Yii::$app->request->setBodyParams(['LoginForm' => ['email' => 'victim@example.test']]);
 
 		$this->assertTrue($filter->beforeAction($action));
 
@@ -216,13 +216,13 @@ class RateLimitTest extends WebTestCase
 
 	public function testADifferentAccountHasItsOwnBudget()
 	{
-		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['username'], 'identityLimit' => 1]);
+		$filter = $this->filter(['limit' => 1000, 'identityParams' => ['email'], 'identityLimit' => 1]);
 		$action = $this->action();
 
-		Yii::$app->request->setBodyParams(['username' => 'one@example.test']);
+		Yii::$app->request->setBodyParams(['email' => 'one@example.test']);
 		$filter->beforeAction($action);
 
-		Yii::$app->request->setBodyParams(['username' => 'two@example.test']);
+		Yii::$app->request->setBodyParams(['email' => 'two@example.test']);
 		$this->assertTrue(
 			$filter->beforeAction($action),
 			'throttling one account must not lock out another'

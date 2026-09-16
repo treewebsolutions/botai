@@ -15,7 +15,7 @@ $this->title = Yii::t('backend', 'Authentication');
 	'validateOnType' => true,
 ]); ?>
 
-	<?= $form->field($model, 'username')->textInput(['autofocus' => true])->label(Yii::t('common', 'Email') . ' / ' . Yii::t('common', 'Phone')) ?>
+	<?= $form->field($model, 'email')->input('email', ['autofocus' => true]) ?>
 
 	<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
 	<?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput() ?>

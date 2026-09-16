@@ -70,7 +70,7 @@ class AuthenticateByTokenForm extends Model
 	}
 
 	/**
-	 * Logs in a user using the provided username and password.
+	 * Logs in a user using the provided token.
 	 *
 	 * @return bool whether the user is logged in successfully
 	 */

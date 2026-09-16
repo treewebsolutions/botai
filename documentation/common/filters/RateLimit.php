@@ -191,7 +191,7 @@ class RateLimit extends ActionFilter
 		$values = [];
 		foreach ($this->identityParams as $param) {
 			$value = Yii::$app->request->getBodyParam($param);
-			// Yii nests form fields under the model name (LoginForm[username]), so look
+			// Yii nests form fields under the model name (LoginForm[email]), so look
 			// one level in as well.
 			if ($value === null) {
 				foreach ((array) Yii::$app->request->getBodyParams() as $group) {

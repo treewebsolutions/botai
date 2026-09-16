@@ -21,43 +21,43 @@ class PasswordResetRequestForm extends Model
 			['email', 'trim'],
 			['email', 'required'],
 			['email', 'email'],
-			['email', 'exist',
-				'targetClass' => '\common\models\User',
-				'filter' => ['status' => User::STATUS_ACTIVE],
-				'message' => 'There is no user with this email address.'
-			],
+			// No `exist` rule: reporting that an address has no account here turned
+			// this form into a membership oracle, and the hub's equivalent stopped
+			// doing that. An address we do not know is answered exactly like one we do.
 		];
 	}
 
 	/**
 	 * Sends an email with a link, for resetting the password.
 	 *
-	 * @return bool whether the email was send
+	 * Always reports success. Whether the address is known, whether the token could be
+	 * stored and whether the message went out are operational facts, logged for an
+	 * operator; handing any of them back to the requester would say which addresses
+	 * hold an account here just as plainly as the old "there is no user with this
+	 * email address" did.
+	 *
+	 * @return bool always true
 	 * @throws \yii\base\Exception
 	 */
 	public function sendEmail()
 	{
 		/* @var $user User */
-		$user = User::findOne([
-			'email' => $this->email,
-			'status' => User::STATUS_ACTIVE,
-			'deleted' => User::NO,
-		]);
-		// Exit if there is no user with the provided email address
+		$user = User::findByEmail($this->email);
 		if (!$user) {
-			return false;
+			Yii::info('Password reset requested for an unknown address.', __METHOD__);
+			return true;
 		}
-		// Ensure tha the User model has a password reset token set
+
+		// Ensure that the User model has a password reset token set
 		if (!User::isPasswordResetTokenValid($user->password_reset_token)) {
-			// Generate a new password reset token
 			$user->password_reset_token = User::generatePasswordResetToken();
-			// Save the User model
 			if (!$user->save()) {
-				return false;
+				Yii::warning('Could not store the password reset token.', __METHOD__);
+				return true;
 			}
 		}
-		// Send the email
-		return Yii::$app->mailer
+
+		$sent = Yii::$app->mailer
 			->compose(
 				['html' => 'passwordResetToken-html', 'text' => 'passwordResetToken-text'],
 				['user' => $user]
@@ -65,5 +65,13 @@ class PasswordResetRequestForm extends Model
 			->setTo([$this->email => $user->fullName])
 			->setSubject(Yii::t('label', 'Password reset for {name}', ['name' => Yii::$app->name]))
 			->send();
+
+		if (!$sent) {
+			// Worth an operator's attention, but not the requester's: a delivery failure
+			// reported back distinguishes a known address from an unknown one.
+			Yii::warning('Could not send the password reset message.', __METHOD__);
+		}
+
+		return true;
 	}
 }

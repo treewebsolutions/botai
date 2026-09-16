@@ -32,7 +32,7 @@ class LoginCest
     protected function formParams($login, $password)
     {
         return [
-            'LoginForm[username]' => $login,
+            'LoginForm[email]' => $login,
             'LoginForm[password]' => $password,
         ];
     }
@@ -47,7 +47,7 @@ class LoginCest
     public function checkWrongPassword(FunctionalTester $I)
     {
         $I->submitForm('#login-form', $this->formParams('admin', 'wrong'));
-        $I->seeValidationError('Incorrect username or password.');
+        $I->seeValidationError('The provided credentials are invalid.');
     }
     
     public function checkValidLogin(FunctionalTester $I)

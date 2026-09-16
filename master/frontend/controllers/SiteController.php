@@ -76,7 +76,7 @@ class SiteController extends MainController
 				// Also counted per account named, which is the shape an address counter
 				// cannot see: many addresses working on one login, or one inbox being
 				// flooded with reset mail.
-				'identityParams' => ['username', 'email', 'phone'],
+				'identityParams' => ['email'],
 				'identityLimit' => 10,
 				'identityWindow' => 3600,
 				'keyPrefix' => 'ratelimit:credentials',
@@ -88,7 +88,7 @@ class SiteController extends MainController
 				'only' => ['contact', 'subscribe', 'check', 'testimonial'],
 				'limit' => 10,
 				'window' => 3600,
-				'identityParams' => ['email', 'phone'],
+				'identityParams' => ['email'],
 				'identityLimit' => 5,
 				'identityWindow' => 3600,
 				'keyPrefix' => 'ratelimit:messaging',
@@ -479,7 +479,7 @@ class SiteController extends MainController
 		$resetPasswordModel->setScenario(ResetPasswordForm::SCENARIO_TOKEN);
 
 		if ($resetPasswordRequestModel->load(Yii::$app->request->post()) && $resetPasswordRequestModel->validate() && $resetPasswordRequestModel->sendRequest()) {
-			Yii::$app->session->setFlash('success', Yii::t('common', 'You have requested a password reset. Please check the message that was sent to {0}.', [$resetPasswordRequestModel->username]));
+			Yii::$app->session->setFlash('success', Yii::t('common', 'You have requested a password reset. Please check the message that was sent to {0}.', [$resetPasswordRequestModel->email]));
 			return $this->redirect(['reset-password']);
 		} else {
 			$resetPasswordModel->load(Yii::$app->request->post());

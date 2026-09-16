@@ -20,7 +20,7 @@ use yii\helpers\Html;
 					'validateOnBlur' => false,
 				]); ?>
 				<div class="panel-body">
-					<?= $form->field($model, 'username')->input('email') ?>
+					<?= $form->field($model, 'email')->input('email') ?>
 					<?= $form->field($model, 'password')->passwordInput() ?>
 					<div class="clearfix form-group">
 						<?= $form->field($model, 'rememberMe', [

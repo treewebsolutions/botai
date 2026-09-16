@@ -321,7 +321,7 @@ class SubscriberController extends MainController
 
 		return $this->asJson([
 			'success' => true,
-			'data' => reset(User::findAllNotSubscriberUsersByUsername($params['value'])),
+			'data' => reset(User::findAllNotSubscriberUsersByEmail($params['value'])),
 		]);
 	}
 

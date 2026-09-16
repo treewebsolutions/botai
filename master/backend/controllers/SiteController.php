@@ -30,7 +30,7 @@ class SiteController extends MainController
 				'window' => 900,
 				// Also counted per account named, which is the shape an address counter
 				// cannot see: many addresses working on one login.
-				'identityParams' => ['username', 'email'],
+				'identityParams' => ['email'],
 				'identityLimit' => 10,
 				'identityWindow' => 3600,
 				'keyPrefix' => 'ratelimit:admin',

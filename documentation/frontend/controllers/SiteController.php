@@ -205,7 +205,7 @@ class SiteController extends MainController
 		$resetPasswordModel->setScenario(ResetPasswordForm::SCENARIO_TOKEN);
 
 		if ($resetPasswordRequestModel->load(Yii::$app->request->post()) && $resetPasswordRequestModel->validate() && $resetPasswordRequestModel->sendRequest()) {
-			Yii::$app->session->setFlash('success', Yii::t('common', 'You have requested a password reset. Please check the message that was sent to {0}.', [$resetPasswordRequestModel->username]));
+			Yii::$app->session->setFlash('success', Yii::t('common', 'You have requested a password reset. Please check the message that was sent to {0}.', [$resetPasswordRequestModel->email]));
 			return $this->redirect(['reset-password']);
 		} else {
 			$resetPasswordModel->load(Yii::$app->request->post());

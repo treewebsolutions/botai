@@ -12,9 +12,9 @@ use yii\helpers\ArrayHelper;
 class LoginForm extends Model
 {
 	/**
-	 * @var string The username.
+	 * @var string The email address that identifies the account.
 	 */
-	public $username;
+	public $email;
 
 	/**
 	 * @var string The password.
@@ -42,8 +42,9 @@ class LoginForm extends Model
 	public function rules()
 	{
 		return [
-			[['username', 'password'], 'required'],
-			['username', 'safe'],
+			[['email', 'password'], 'required'],
+			[['email'], 'trim'],
+			['email', 'email'],
 			['rememberMe', 'boolean'],
 			['password', 'validatePassword'],
 			['verifyCode', 'safe'],
@@ -56,7 +57,7 @@ class LoginForm extends Model
 	public function attributeLabels()
 	{
 		return ArrayHelper::merge(parent::attributeLabels(), [
-			'username' => Yii::t('label', 'Email'),
+			'email' => Yii::t('label', 'Email'),
 			'password' => Yii::t('label', 'Password'),
 			'rememberMe' => Yii::t('label', 'Remember Me'),
 		]);
@@ -80,14 +81,14 @@ class LoginForm extends Model
 	}
 
 	/**
-	 * Finds user by username.
+	 * Finds the account the given email and password identify.
 	 *
 	 * @return User|null
 	 */
 	protected function getUser()
 	{
 		if ($this->_user === null) {
-			$user = User::findByUsername($this->username);
+			$user = User::findByEmail($this->email);
 
 			if (is_array($user)) {
 				foreach ($user as $userModel) {
@@ -106,7 +107,7 @@ class LoginForm extends Model
 	}
 
 	/**
-	 * Logs in a user using the provided username and password.
+	 * Logs in a user using the provided email and password.
 	 *
 	 * @return bool whether the user is logged in successfully
 	 */

@@ -106,7 +106,9 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 			[['created_at', 'updated_at', 'last_activity', 'last_login'], 'default'],
 			[['auth_key'], 'string', 'max' => 32],
 			[['password_hash', 'password_reset_token', 'signup_token', 'login_token', 'username', 'email', 'phone', 'first_name', 'middle_name', 'last_name', 'image'], 'string', 'max' => 255],
-			[['username', 'email', 'phone', 'password_reset_token', 'signup_token', 'login_token'], 'unique'],
+			// Only the credential is unique. `username` and `phone` are descriptive
+			// columns nothing authenticates against.
+			[['email', 'password_reset_token', 'signup_token', 'login_token'], 'unique'],
 			[['email'], 'email'],
 			['gender', 'in', 'range' => [static::GENDER_MALE, static::GENDER_FEMALE]],
 			[['parent_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['parent_id' => 'id']],
@@ -169,24 +171,24 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 	}
 
 	/**
-	 * Finds user by username (it can be any of username, email or phone).
+	 * Finds the account an email address identifies.
 	 *
-	 * @param string $username
+	 * The address is the only credential the platform accepts. This used to also match
+	 * `username` and `phone`: three columns could name the same person, and since only
+	 * `email` is kept unique and verified, whichever row the database happened to
+	 * return first decided who was logged in.
+	 *
+	 * @param string $email
 	 * @return array|\yii\db\ActiveRecord|static|null
 	 */
-	public static function findByUsername($username)
+	public static function findByEmail($email)
 	{
 		return static::find()
 			->andWhere([
 				'status' => static::STATUS_ACTIVE,
 				'deleted' => static::NO,
 			])
-			->andWhere([
-				'OR',
-				['=', 'username', $username],
-				['=', 'email', $username],
-				['=', 'phone', $username],
-			])
+			->andWhere(['=', 'email', $email])
 			->one();
 	}
 
@@ -588,10 +590,10 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 	/**
 	 * Finds all existing users with no role or permission associated.
 	 *
-	 * @param string $username
+	 * @param string $email
 	 * @return array|\yii\db\ActiveRecord[]|static[]
 	 */
-	public static function findAllUsersWithoutRoleByUsername($username)
+	public static function findAllUsersWithoutRoleByEmail($email)
 	{
 		return static::find()
 			->alias('u')
@@ -610,22 +612,17 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 					$query->andWhere(['IS', 'aa.item_name', null]);
 				},
 			], false)
-			->andWhere([
-				'OR',
-				['=', 'u.username', $username],
-				['=', 'u.email', $username],
-				['=', 'u.phone', $username],
-			])
+			->andWhere(['=', 'u.email', $email])
 			->all();
 	}
 
 	/**
 	 * Finds all existing users that are not customers.
 	 *
-	 * @param string $username
+	 * @param string $email
 	 * @return array|\yii\db\ActiveRecord[]|static[]
 	 */
-	public static function findAllNotCustomerUsersByUsername($username)
+	public static function findAllNotCustomerUsersByEmail($email)
 	{
 		return static::find()
 			->alias('u')
@@ -647,12 +644,7 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 					$query->andWhere(['IS', 'c.id', null]);
 				},
 			], false)
-			->andWhere([
-				'OR',
-				['=', 'u.username', $username],
-				['=', 'u.email', $username],
-				['=', 'u.phone', $username],
-			])
+			->andWhere(['=', 'u.email', $email])
 			->all();
 	}
 }

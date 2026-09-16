@@ -21,9 +21,9 @@
 					"mode": "formdata",
 					"formdata": [
 						{
-							"key": "username",
+							"key": "email",
 							"value": "subscriber@grr.la",
-							"description": "username | email | phone, required, string(255)",
+							"description": "email, required, string(255)",
 							"type": "text"
 						},
 						{

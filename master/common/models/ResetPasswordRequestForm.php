@@ -11,9 +11,9 @@ use tws\helpers\Url;
 class ResetPasswordRequestForm extends Model
 {
 	/**
-	 * @var string The email/phone where the reset password token/link will be sent.
+	 * @var string The email address the reset link is sent to.
 	 */
-	public $username;
+	public $email;
 
 	/**
 	 * @var string The honeypot field.
@@ -44,8 +44,9 @@ class ResetPasswordRequestForm extends Model
 	public function rules()
 	{
 		return [
-			[['username'], 'required'],
-			[['username'], 'trim'],
+			[['email'], 'required'],
+			[['email'], 'trim'],
+			['email', 'email'],
 			['workEmail', 'safe'],
             ['captchaResponse', 'safe'],
         ];
@@ -57,18 +58,8 @@ class ResetPasswordRequestForm extends Model
 	public function attributeLabels()
 	{
 		return [
-			'username' => Yii::t('label', 'Email'),
+			'email' => Yii::t('label', 'Email'),
 		];
-	}
-
-	/**
-	 * Getter flag that indicates if the username is a valid email.
-	 *
-	 * @return bool
-	 */
-	public function getIsUsernameValidEmail()
-	{
-		return (new \yii\validators\EmailValidator)->validate($this->username);
 	}
 
 	/**
@@ -79,7 +70,7 @@ class ResetPasswordRequestForm extends Model
 	public function getUser()
 	{
 		if (!$this->_user) {
-			$user = User::findByUsername($this->username);
+			$user = User::findByEmail($this->email);
 			$this->_user = is_array($user) ? reset($user) : $user;
 		}
 		return $this->_user;
@@ -188,12 +179,7 @@ class ResetPasswordRequestForm extends Model
 			/** @var WorkspaceHasUser[] $workspaceUsers */
 			$workspaceUsers = WorkspaceHasUser::find()
 				->andWhere(['user_id' => $user->id])
-				->andWhere([
-					'OR',
-					['=', 'username', $this->username],
-					['=', 'email', $this->username],
-					['=', 'phone', $this->username],
-				])
+				->andWhere(['=', 'email', $this->email])
 				->all();
 			foreach ($workspaceUsers as $workspaceUser) {
 				$workspaceUser->password_reset_token = $passwordResetToken;
@@ -205,7 +191,7 @@ class ResetPasswordRequestForm extends Model
 
 			$dbTransaction->commit();
 
-			if ($this->getIsUsernameValidEmail() && !$this->sendEmail()) {
+			if (!$this->sendEmail()) {
 				// Worth an operator's attention, but not the requester's: a delivery
 				// failure reported back would distinguish a known address from an
 				// unknown one just as plainly as the old error did.

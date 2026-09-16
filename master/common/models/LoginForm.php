@@ -13,9 +13,9 @@ use yii\helpers\ArrayHelper;
 class LoginForm extends Model
 {
 	/**
-	 * @var string The username.
+	 * @var string The email address that identifies the account.
 	 */
-	public $username;
+	public $email;
 
 	/**
 	 * @var string The password.
@@ -48,8 +48,12 @@ class LoginForm extends Model
 	public function rules()
 	{
 		return [
-			[['username', 'password'], 'required'],
-			['username', 'safe'],
+			[['email', 'password'], 'required'],
+			[['email'], 'trim'],
+			// Rejected here rather than looked up: an address that is not an address
+			// cannot name an account, and saying so costs one less query than finding
+			// out from the database.
+			['email', 'email'],
 			['rememberMe', 'boolean'],
 			['password', 'validatePassword'],
 			['workEmail', 'safe'],
@@ -63,7 +67,7 @@ class LoginForm extends Model
 	public function attributeLabels()
 	{
 		return ArrayHelper::merge(parent::attributeLabels(), [
-			'username' => Yii::t('label', 'Email'),
+			'email' => Yii::t('label', 'Email'),
 			'password' => Yii::t('label', 'Password'),
 			'rememberMe' => Yii::t('label', 'Remember Me'),
 		]);
@@ -87,14 +91,17 @@ class LoginForm extends Model
 	}
 
 	/**
-	 * Finds user by username.
+	 * Finds the account the given email and password identify.
+	 *
+	 * An address can name more than one account - the hub user and a row per workspace,
+	 * each with its own password - so the password decides which of them is meant.
 	 *
 	 * @return User|null
 	 */
 	protected function getUser()
 	{
 		if ($this->_user === null) {
-			$user = User::findByUsername($this->username);
+			$user = User::findByEmail($this->email);
 
 			if (is_array($user)) {
 				foreach ($user as $userModel) {
@@ -113,7 +120,7 @@ class LoginForm extends Model
 	}
 
 	/**
-	 * Logs in a user using the provided username and password.
+	 * Logs in a user using the provided email and password.
 	 *
 	 * @return bool whether the user is logged in successfully
 	 */

@@ -372,7 +372,7 @@ class SubscriberUserController extends MainController
 
 		return $this->asJson([
 			'success' => true,
-			'data' => reset(User::findAllUsersWithoutRoleByUsername($params['value'])),
+			'data' => reset(User::findAllUsersWithoutRoleByEmail($params['value'])),
 		]);
 	}
 

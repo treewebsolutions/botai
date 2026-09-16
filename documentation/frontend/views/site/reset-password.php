@@ -70,7 +70,7 @@ use yii\helpers\Html;
 							<h2 class="panel-title"><?= Yii::t('common', 'Request a password reset code') ?></h2>
 						</div>
 						<div class="panel-body">
-							<?= $form->field($resetPasswordRequestModel, 'username')->textInput() ?>
+							<?= $form->field($resetPasswordRequestModel, 'email')->input('email') ?>
                             <?= $form->field($resetPasswordRequestModel, 'workEmail', [
                                 'options' => [
                                     'class' => 'work-email',
