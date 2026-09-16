@@ -362,7 +362,18 @@ class SiteController extends MainController
 	 */
 	public function actionLogout()
 	{
+		/** @var User $user */
+		$user = Yii::$app->user->identity;
+
 		Yii::$app->user->logout();
+
+		// Ending the session is not enough: the same auth_key is the REST API's bearer
+		// token, so without rotating it a signed-out account stays reachable through the
+		// API by anyone holding the token. It also invalidates any "remember me" cookie,
+		// which is what signing out is meant to do.
+		if ($user !== null) {
+			$user->rotateAuthKey();
+		}
 
 		return $this->goHome();
 	}

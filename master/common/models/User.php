@@ -934,4 +934,43 @@ class User extends CommonActiveRecord implements \yii\web\IdentityInterface
 			])
 			->all();
 	}
+
+	/**
+	 * Rotates the bearer token and pushes the new value into every workspace copy.
+	 *
+	 * `auth_key` does double duty: Yii validates the "remember me" identity cookie
+	 * against it, and the REST API accepts it as a bearer token, so rotating it ends
+	 * both at once - which is what logging out is supposed to mean. Before this,
+	 * signing out left the API token live forever and anyone holding it kept access.
+	 *
+	 * The tenant databases carry their own copy of the row, so a rotation that stopped
+	 * at master would leave the old key working there.
+	 *
+	 * @return bool whether the new key was stored
+	 */
+	public function rotateAuthKey()
+	{
+		$this->generateAuthKey();
+		if (!$this->save(false, ['auth_key'])) {
+			return false;
+		}
+
+		foreach (WorkspaceHasUser::find()->andWhere(['user_id' => $this->id])->all() as $workspaceUser) {
+			if (!($workspace = Workspace::findOne(['id' => $workspaceUser->workspace_id]))) {
+				continue;
+			}
+			try {
+				$workspace->getWorkspaceDb()->createCommand()
+					->update('{{%user}}', ['auth_key' => $this->auth_key], ['id' => $this->id])
+					->execute();
+			} catch (\Exception $e) {
+				// A tenant database that is down must not keep the user signed in here;
+				// its copy is refreshed on the next password change or login.
+				Yii::warning("Could not rotate auth_key in workspace {$workspaceUser->workspace_id}: " . $e->getMessage(), __METHOD__);
+			}
+		}
+
+		return true;
+	}
+
 }

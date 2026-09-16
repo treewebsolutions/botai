@@ -2,6 +2,7 @@
 
 namespace api\v1\modules\user\controllers;
 
+use common\helpers\RoleHelper;
 use api\v1\modules\user\models\LoginForm;
 use api\v1\modules\user\models\SignupForm;
 use api\v1\modules\user\models\User;
@@ -207,6 +208,7 @@ class UserController extends Controller
 	 */
 	public function actionUpdate($id)
 	{
+		$this->assertCanManage($id);
 		$model = $this->findModel($id, UserForm::class);
 		try {
 			if ($model->load(Yii::$app->request->bodyParams, '') && $model->save()) {
@@ -244,6 +246,9 @@ class UserController extends Controller
 	{
 		if ($id === null) {
 			$id = Yii::$app->request->bodyParams;
+		}
+		foreach ((array) $id as $targetId) {
+			$this->assertCanManage($targetId);
 		}
 		$models = $this->findModel($id, null, true);
 		$dbTransaction = Yii::$app->db->beginTransaction();
@@ -486,4 +491,26 @@ class UserController extends Controller
 		}
 		throw new NotFoundHttpException(Yii::t('api', 'The requested resource does not exist.'));
 	}
+
+	/**
+	 * Asserts that the caller may act on the given account.
+	 *
+	 * Acting on one's own record is always allowed. For anyone else's, holding the
+	 * permission is not enough: an account carrying authority the caller does not have
+	 * must stay out of reach, or a limited user-manager rewrites an administrator's
+	 * credentials and signs in as them.
+	 *
+	 * @param int|string $id The target [[User]] model ID.
+	 * @throws ForbiddenHttpException if the caller may not act on the target account
+	 */
+	protected function assertCanManage($id)
+	{
+		if (RoleHelper::isOwnAccount($id)) {
+			return;
+		}
+		if (!RoleHelper::canManageUser($id)) {
+			throw new ForbiddenHttpException(Yii::t('yii', 'You are not allowed to perform this action.'));
+		}
+	}
+
 }

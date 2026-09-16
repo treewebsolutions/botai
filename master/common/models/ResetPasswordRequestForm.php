@@ -96,7 +96,9 @@ class ResetPasswordRequestForm extends Model
 			$user = $this->getUser();
 			$template = Template::findDefaultByTypeAndVariant(Template::TYPE_EMAIL, Template::EMAIL_VARIANT_PASSWORD_RESET);
 			if (!$template) {
-				$this->addError('username', Yii::t('common', 'Cannot send reset password message for this user.'));
+				// Operational failure, logged rather than reported: telling the requester
+				// anything other than the standard answer re-opens the oracle.
+				Yii::warning('No default password-reset email template configured.', __METHOD__);
 				throw new \Exception();
 			}
 			if (!($templateTranslation = $template->getTranslation()) || !($page = Page::findPageByRoute(['/site/reset-password'])->getTranslation())) {
@@ -156,14 +158,17 @@ class ResetPasswordRequestForm extends Model
 			$this->addError('captchaResponse', Yii::t('common', 'The captcha verification failed. Please try again.'));
 			return false;
 		}
+		// An address we do not know is answered exactly like one we do. Reporting it as
+		// invalid turned this endpoint into a membership oracle: anyone could sift a list
+		// of addresses or phone numbers for the ones that hold an account here.
+		if (!$this->getUser()) {
+			Yii::info('Password reset requested for an unknown identifier.', __METHOD__);
+			return true;
+		}
+
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
-			if (!($user = $this->getUser())) {
-				$this->addError('username', Yii::t('yii', '{attribute} is invalid.', [
-					'attribute' => $this->getAttributeLabel('username'),
-				]));
-				throw new \Exception();
-			}
+			$user = $this->getUser();
 			$passwordResetToken = User::generatePasswordResetToken();
 
 			if (is_array($user)) {
@@ -174,7 +179,7 @@ class ResetPasswordRequestForm extends Model
 				// Set password reset token for User model
 				$user->password_reset_token = $passwordResetToken;
 				if (!$user->save(false)) {
-					$this->addError('username', Yii::t('common', 'Cannot reset password for this user.'));
+					Yii::warning('Could not store the password reset token.', __METHOD__);
 					throw new \Exception();
 				}
 			}
@@ -193,19 +198,25 @@ class ResetPasswordRequestForm extends Model
 			foreach ($workspaceUsers as $workspaceUser) {
 				$workspaceUser->password_reset_token = $passwordResetToken;
 				if (!$workspaceUser->save(false)) {
-					$this->addError('username', Yii::t('common', 'Cannot reset password for this user.'));
+					Yii::warning('Could not store the password reset token.', __METHOD__);
 					throw new \Exception();
 				}
 			}
 
 			$dbTransaction->commit();
 
-			if ($this->getIsUsernameValidEmail()) {
-				return $this->sendEmail();
+			if ($this->getIsUsernameValidEmail() && !$this->sendEmail()) {
+				// Worth an operator's attention, but not the requester's: a delivery
+				// failure reported back would distinguish a known address from an
+				// unknown one just as plainly as the old error did.
+				Yii::warning('Could not send the password reset message.', __METHOD__);
 			}
 		} catch (\Exception $e) {
 			$dbTransaction->rollBack();
-			return false;
+			Yii::warning('Password reset request failed: ' . $e->getMessage(), __METHOD__);
 		}
+
+		// Always the same answer, whatever happened above.
+		return true;
 	}
 }
