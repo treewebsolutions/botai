@@ -171,9 +171,22 @@ class Scraper extends Component
 		$links = [];
 
 		foreach ($dom->getElementsByTagName('a') as $node) {
-			$href = $node->getAttribute('href');
-			if ($this->isValidLink($href, $website)) {
-				$links[] = $href;
+			$href = trim($node->getAttribute('href'));
+			// Judged on the raw href, before anything is resolved: "#top" means this page,
+			// and resolving it would point at the site root instead - a different page
+			// entirely when the crawl is somewhere deeper.
+			if ($href === '' || preg_match('/^(#|javascript:|mailto:|tel:|data:)/i', $href)) {
+				continue;
+			}
+
+			// Resolve before judging. A site that writes its links relative - "/ro/servicii"
+			// rather than "https://example.ro/ro/servicii" - had every one of them thrown
+			// away, because the check asked whether the href contained the site address and
+			// a relative href never does.
+			$absolute = $this->stripFragment($this->normalizeUrl($href));
+
+			if ($this->isValidLink($absolute, $website)) {
+				$links[] = $absolute;
 			}
 		}
 
@@ -194,11 +207,50 @@ class Scraper extends Component
 			return false;
 		}
 
-		if ($website && strpos($href, $website) === false) {
-			return false;
+		// Same site, compared by host rather than by substring: a site reached as
+		// "example.ro" writes some of its links as "www.example.ro", and one address being
+		// a substring of the other is not what makes two pages the same site.
+		if ($website) {
+			$siteHost = $this->hostOf($website);
+			if ($siteHost !== '' && $this->hostOf($href) !== $siteHost) {
+				return false;
+			}
 		}
 
 		return true;
+	}
+
+	/**
+	 * The bare host of a URL, lowercased and without the `www.` prefix, so that
+	 * "example.ro" and "https://www.Example.ro/a" are recognised as one site.
+	 *
+	 * @param string $url
+	 * @return string
+	 */
+	private function hostOf($url)
+	{
+		$url = trim((string) $url);
+		if ($url === '') {
+			return '';
+		}
+
+		$host = parse_url(strpos($url, '://') === false ? "http://{$url}" : $url, PHP_URL_HOST);
+
+		return strtolower(preg_replace('/^www\./i', '', (string) $host));
+	}
+
+	/**
+	 * Drops the fragment: /servicii#contact and /servicii are one page, and keeping both
+	 * would store the same content twice and crawl it twice.
+	 *
+	 * @param string $url
+	 * @return string
+	 */
+	private function stripFragment($url)
+	{
+		$position = strpos((string) $url, '#');
+
+		return $position === false ? (string) $url : substr((string) $url, 0, $position);
 	}
 
 	private function normalizeUrl($url)
