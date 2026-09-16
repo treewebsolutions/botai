@@ -2,6 +2,7 @@
 
 namespace common\models;
 
+use common\validators\PasswordValidator;
 use common\helpers\CaptchaHelper;
 use Yii;
 use yii\base\Model;
@@ -77,7 +78,7 @@ class SignupForm extends Model
 			[['first_name', 'last_name', 'email', 'phone', 'password', 'acceptTerms'], 'required'],
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'string', 'max' => 255],
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'trim'],
-			['password', 'string', 'min' => 6],
+			['password', PasswordValidator::class],
 			['email', 'email'],
 			[['email', 'phone'], 'unique', 'targetClass' => 'common\models\User'],
 			['acceptTerms', 'boolean'],

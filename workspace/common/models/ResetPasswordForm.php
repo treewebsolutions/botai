@@ -2,6 +2,7 @@
 
 namespace common\models;
 
+use common\validators\PasswordValidator;
 use InvalidArgumentException;
 use Yii;
 use yii\base\Model;
@@ -53,7 +54,8 @@ class ResetPasswordForm extends Model
 		return [
 			[['password', 'password_confirm'], 'required'],
 			[['password', 'password_confirm'], 'trim'],
-			[['password', 'password_confirm'], 'string', 'min' => 6, 'max' => 255],
+			[['password', 'password_confirm'], 'string'],
+			[['password'], PasswordValidator::class],
 			['password_confirm', 'compare', 'compareAttribute' => 'password', 'message' => Yii::t('common', 'Passwords don\'t match.')],
 		];
 	}

@@ -2,6 +2,7 @@
 
 namespace api\v1\modules\user\models;
 
+use common\validators\PasswordValidator;
 use Yii;
 use yii\base\Model;
 
@@ -55,7 +56,7 @@ class SignupForm extends Model
 			[['first_name', 'last_name', 'email', 'phone', 'password'], 'required'],
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'string', 'max' => 255],
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'trim'],
-			['password', 'string', 'min' => 6],
+			['password', PasswordValidator::class],
 			['email', 'email'],
 			[['email'], 'unique', 'targetClass' => \common\models\User::class],
 		];

@@ -120,7 +120,10 @@ $this->params['breadcrumbs'][] = $this->title;
 		<?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
 		<div class="row">
 			<div class="col-sm-6">
-				<?= $form->field($model, 'new_password', ['template' => $secretFieldTemplate])->passwordInput() ?>
+				<?= $form->field($model, 'current_password', ['template' => $secretFieldTemplate])->passwordInput(['autocomplete' => 'current-password']) ?>
+			</div>
+			<div class="col-sm-6">
+				<?= $form->field($model, 'new_password', ['template' => $secretFieldTemplate])->passwordInput(['autocomplete' => 'new-password']) ?>
 			</div>
 			<div class="col-sm-6">
 				<?= $form->field($model, 'new_password_confirm', ['template' => $secretFieldTemplate])->passwordInput() ?>

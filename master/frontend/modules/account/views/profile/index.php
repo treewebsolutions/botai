@@ -114,6 +114,7 @@ $this->params['breadcrumbs'][] = Html::encode($this->title);
 							<h3 class="panel-title"><?= Yii::t('common', 'Security') ?></h3>
 						</div>
 						<div class="panel-body">
+							<?= $form->field($model, 'current_password')->passwordInput(['autocomplete' => 'current-password']) ?>
 							<?= $form->field($model, 'new_password')->passwordInput(['autocomplete' => 'new-password']) ?>
 							<?= $form->field($model, 'new_password_confirm')->passwordInput(['autocomplete' => 'new-password']) ?>
 						</div>

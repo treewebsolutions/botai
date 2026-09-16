@@ -29,6 +29,11 @@ class UserProfileForm extends User
 	public $new_password;
 
 	/**
+	 * @var string The current password, required in order to change it.
+	 */
+	public $current_password;
+
+	/**
 	 * @var string The new password confirm.
 	 */
 	public $new_password_confirm;
@@ -45,6 +50,13 @@ class UserProfileForm extends User
 			['gender', 'in', 'range' => [1, 2]],
 			[['new_password', 'new_password_confirm', 'first_name', 'middle_name', 'last_name'], 'string', 'max' => 255],
 			[['new_password', 'new_password_confirm', 'first_name', 'middle_name', 'last_name'], 'trim'],
+			// Changing a password is a re-authentication point: without it, temporary
+			// access to a signed-in session converts straight into permanent control
+			// of the account.
+			['current_password', 'required', 'when' => function ($model) {
+				return !empty($model->new_password);
+			}],
+			['current_password', 'validateCurrentPassword'],
 			['new_password_confirm', 'required', 'when' => function ($model) {
 				return !empty($model->new_password);
 			}, 'whenClient' => 'function (attribute, value) {
@@ -64,6 +76,7 @@ class UserProfileForm extends User
 		return ArrayHelper::merge(parent::attributeLabels(), [
 			'imageFile' => Yii::t('label', 'Image'),
 			'role' => Yii::t('label', 'Role'),
+			'current_password' => Yii::t('label', 'Current Password'),
 			'new_password' => Yii::t('label', 'New Password'),
 			'new_password_confirm' => Yii::t('label', 'Confirm New Password'),
 		]);
@@ -147,4 +160,21 @@ class UserProfileForm extends User
 			return false;
 		}
 	}
+
+	/**
+	 * Verifies the current password. Inline validator for `current_password`.
+	 *
+	 * @param string $attribute
+	 * @param array $params
+	 */
+	public function validateCurrentPassword($attribute, $params)
+	{
+		if (empty($this->new_password) || $this->hasErrors($attribute)) {
+			return;
+		}
+		if (!$this->validatePassword((string) $this->current_password)) {
+			$this->addError($attribute, Yii::t('common', 'The provided credentials are invalid.'));
+		}
+	}
+
 }

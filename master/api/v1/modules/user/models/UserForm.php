@@ -2,6 +2,7 @@
 
 namespace api\v1\modules\user\models;
 
+use common\validators\PasswordValidator;
 use common\helpers\RoleHelper;
 use common\helpers\StringHelper;
 use common\models\AuthAssignment;
@@ -47,6 +48,7 @@ class UserForm extends User
 	{
 		return ArrayHelper::merge(parent::rules(), [
 			[['password', 'password_confirm'], 'string', 'max' => 255],
+			[['password'], PasswordValidator::class],
 			[['email', 'phone', 'password', 'password_confirm', 'first_name', 'middle_name', 'last_name'], 'trim'],
 			['password_confirm', 'required', 'when' => function ($model) {
 				return !empty($model->password);
