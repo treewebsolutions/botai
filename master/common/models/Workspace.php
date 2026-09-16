@@ -723,6 +723,28 @@ class Workspace extends CommonActiveRecord
 				$this->importSqlFile($workspaceDb, $typeSqlFile);
 			}
 
+			// The knowledge base scraped pages are indexed into.
+			//
+			// Without a row here a workspace comes out of install with a working scraper and
+			// no index: every page it fetches asks whether indexing is configured, is told
+			// no, and returns - silently, since that is also the honest answer for a tenant
+			// that wants no index at all. The row makes the answer yes from the first page.
+			//
+			// Nothing is created at OpenAI now. The vector store is made on the first page
+			// actually indexed, so a workspace that is never used costs nothing there.
+			$workspaceDb->createCommand()->insert('{{%knowledge_base}}', [
+				'name' => 'Website',
+				'description' => 'Scraped pages semantic index',
+				'provider' => 1,                // KnowledgeBase::PROVIDER_OPENAI
+				'chunk_size' => 2000,
+				'chunk_overlap' => 250,
+				'default' => 1,
+				'status' => 1,                  // active
+				'deleted' => 0,
+				'created_at' => date('Y-m-d H:i:s'),
+				'updated_at' => date('Y-m-d H:i:s'),
+			])->execute();
+
 			// Create the super admin user by copying the subscriber's master account into
 			// the tenant (same id and password hash, so the credentials match).
 			if ($user = $this->subscription->subscriber->user ?? null) {

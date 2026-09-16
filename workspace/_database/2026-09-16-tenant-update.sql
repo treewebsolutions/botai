@@ -228,6 +228,30 @@ UPDATE `scheduled_task`
 SET `cron_expression` = CONCAT('*/', SUBSTRING(`cron_expression`, 3))
 WHERE `cron_expression` LIKE '0/%';
 
+-- ── 4e. knowledge base-ul pentru paginile scrape-uite ──────────────────────
+--
+-- Fără el, indexarea nu porneşte: `scheduleSync()` întreabă la fiecare pagină
+-- salvată dacă indexarea e configurată, primeşte „nu" şi se întoarce tăcut. Un
+-- tenant rămânea cu scraper funcţional şi zero indexare.
+--
+-- Instalările noi îl primesc din `Workspace::installDatabase()`; ăsta e pentru
+-- workspace-urile care existau deja.
+--
+-- Nu se creează nimic la OpenAI acum: vector store-ul se face la prima pagină
+-- indexată efectiv, deci un tenant nefolosit nu costă nimic acolo.
+--
+-- Nu se atinge un tenant care are deja un knowledge base activ — poate e al lui,
+-- configurat altfel.
+
+INSERT INTO `knowledge_base`
+    (`name`, `description`, `provider`, `chunk_size`, `chunk_overlap`, `default`,
+     `created_at`, `updated_at`, `status`, `deleted`)
+SELECT 'Website', 'Scraped pages semantic index', 1, 2000, 250, 1, NOW(), NOW(), 1, 0
+FROM DUAL
+WHERE NOT EXISTS (
+    SELECT 1 FROM `knowledge_base` WHERE `deleted` = 0 AND `status` = 1
+);
+
 -- ── 5. integrările locale, şterse definitiv ────────────────────────────────
 --
 --     Rulează DOAR după ce cheia e pe hub şi ai confirmat că un tenant o vede
