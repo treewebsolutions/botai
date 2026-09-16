@@ -2,6 +2,7 @@
 
 namespace api\v1\modules\user\models;
 
+use common\helpers\RoleHelper;
 use common\helpers\StringHelper;
 use common\models\AuthAssignment;
 use common\models\Page;
@@ -82,6 +83,17 @@ class UserForm extends User
 	 */
 	protected function assignPermissions()
 	{
+		// The API reaches the same assignment the backend screens do, so it needs the
+		// same guard: nothing may be granted that the caller does not already hold.
+		if (!RoleHelper::canGrantRole($this->role)) {
+			$this->addError('role', Yii::t('api', 'You are not allowed to perform this action.'));
+			return false;
+		}
+		if (!$this->getIsNewRecord() && !RoleHelper::canChangeRoleOf($this->id)) {
+			$this->addError('role', Yii::t('api', 'You are not allowed to perform this action.'));
+			return false;
+		}
+
 		try {
 			AuthAssignment::deleteAll(['user_id' => $this->id]);
 

@@ -2,6 +2,7 @@
 
 namespace backend\modules\user\models;
 
+use common\helpers\RoleHelper;
 use common\models\AuthItem;
 use Yii;
 use yii\base\Model;
@@ -65,6 +66,15 @@ class RoleForm extends AuthItem
 	 */
 	protected function savePermissionsForRole($role)
 	{
+		// Assignment is not the only way up: writing a permission you do not hold into a
+		// role you may edit, then assigning that role, reaches the same place. So a role
+		// may only ever be saved with permissions the caller already has, and a role that
+		// already outranks the caller cannot be edited at all.
+		if (!RoleHelper::canDefineRole($this->getIsNewRecord() ? null : $role->name, (array) $this->permissions)) {
+			$this->addError('permissions', Yii::t('yii', 'You are not allowed to perform this action.'));
+			return false;
+		}
+
 		try {
 			$authManager = Yii::$app->authManager;
 

@@ -113,6 +113,16 @@ abstract class WebTestCase extends DatabaseTestCase
 					'url' => '/test',
 					'hostInfo' => 'http://test.local',
 				],
+				// Real RBAC against the auth_* tables in tests/_schema.sql. Most tests never
+				// touch it - the fake user component below answers can() without asking -
+				// but the authorization tests need the actual tree, and anything that
+				// assigns a role goes through here.
+				'authManager' => [
+					'class' => \yii\rbac\DbManager::class,
+					// No cache: a role assigned mid-test has to be visible immediately, and
+					// a cached tree must not survive into the next test.
+					'cache' => null,
+				],
 				// The backend guards actions with RBAC roles; the fake passes them all,
 				// so the tests exercise the action logic rather than the auth tree.
 				'user' => [

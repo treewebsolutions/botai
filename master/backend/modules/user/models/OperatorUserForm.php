@@ -2,6 +2,7 @@
 
 namespace backend\modules\user\models;
 
+use common\helpers\RoleHelper;
 use common\models\AuthAssignment;
 use common\models\AuthItem;
 use common\models\Page;
@@ -27,6 +28,11 @@ class OperatorUserForm extends User
 	 * @var string The role name.
 	 */
 	public $role;
+
+	/**
+	 * @var string|null The role the record already carried, set in [[afterFind()]].
+	 */
+	public $oldRole;
 
 
 	/**
@@ -123,6 +129,9 @@ class OperatorUserForm extends User
 		parent::afterFind();
 
 		$this->role = $this->authAssignment->item_name;
+		// Kept so the guard below can tell an actual role change from a save that
+		// merely carried the current value back.
+		$this->oldRole = $this->role;
 	}
 
 	/**
@@ -133,6 +142,18 @@ class OperatorUserForm extends User
 	 */
 	protected function assignPermissions()
 	{
+		// Nothing may be granted that the caller does not already hold, and a caller may
+		// not touch an account that outranks it or change its own role - otherwise a
+		// limited user-manager promotes itself straight to administrator.
+		if ($this->role !== $this->oldRole && !RoleHelper::canChangeRoleOf($this->id)) {
+			$this->addError('role', Yii::t('yii', 'You are not allowed to perform this action.'));
+			return false;
+		}
+		if (!RoleHelper::canGrantRole($this->role)) {
+			$this->addError('role', Yii::t('yii', 'You are not allowed to perform this action.'));
+			return false;
+		}
+
 		try {
 			AuthAssignment::deleteAll(['user_id' => $this->id]);
 
