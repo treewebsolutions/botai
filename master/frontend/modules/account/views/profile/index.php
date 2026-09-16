@@ -7,8 +7,10 @@ use common\widgets\ActiveForm;
 use tws\widgets\datetimepicker\DateTimePicker;
 use kartik\file\FileInput;
 use kartik\select2\Select2;
+use tws\widgets\typeahead\Typeahead;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
+use yii\web\JsExpression;
 use tws\helpers\Url;
 
 $this->params['breadcrumbs'][] = Html::encode($this->title);
@@ -178,23 +180,6 @@ $this->params['breadcrumbs'][] = Html::encode($this->title);
 								<legend><?= Yii::t('label', 'Address') ?></legend>
 								<div class="row">
 									<div class="col-md-4">
-										<?= $form->field($model, 'street_name')->textInput() ?>
-									</div>
-									<div class="col-md-4">
-										<?= $form->field($model, 'street_number')->textInput() ?>
-									</div>
-									<div class="col-md-4">
-										<?= $form->field($model, 'locality')->textInput() ?>
-									</div>
-								</div>
-								<div class="row">
-									<div class="col-md-4">
-										<?= $form->field($model, 'zip_code')->textInput() ?>
-									</div>
-									<div class="col-md-4">
-										<?= $form->field($model, 'county')->textInput() ?>
-									</div>
-									<div class="col-md-4">
 										<?= $form->field($model, 'country')->widget(Select2::class, [
 											'data' => ArrayHelper::map(\common\models\Country::findAllCountries(), 'iso_alpha2', 'translation.name'),
 											'pluginLoading' => false,
@@ -203,6 +188,100 @@ $this->params['breadcrumbs'][] = Html::encode($this->title);
 												'placeholder' => Yii::t('common', 'Choose'),
 											],
 										]) ?>
+									</div>
+									<div class="col-md-4">
+										<?= $form->field($model, 'county')->widget(Typeahead::class, [
+											'options' => [
+												'class' => 'form-control',
+												'type' => 'text',
+												'placeholder' => '',
+												'autocomplete' => 'off-county',
+											],
+											'name' => 'county',
+											'clientOptions' => [
+												'minLength' => 2,
+												'maxItem' => 10,
+												'hint' => true,
+												'accent' => [
+													'from' => 'âăîşţșț',
+													'to' => 'aaistst',
+												],
+												'cancelButton' => false,
+												'dynamic' => true,
+												'searchOnFocus' => true,
+												'backdrop' => [
+													'background-color' => '#ffffff',
+													'opacity' => '0.4',
+												],
+												'source' => [
+													'results' => [
+														'display' => 'label',
+														'ajax' => new JsExpression('function (query) {
+															return {
+																"method": "POST",
+																"url": "' . Url::to(['/site/search']) . '",
+																"path": "results",
+																"data": {
+																	"county": query,
+																	"country_code": $("#' . Html::getInputId($model, 'country') . '").val()
+																}
+															};
+														}'),
+													],
+												],
+											],
+										]) ?>
+									</div>
+									<div class="col-md-4">
+										<?= $form->field($model, 'locality')->widget(Typeahead::class, [
+											'options' => [
+												'class' => 'form-control',
+												'type' => 'text',
+												'placeholder' => '',
+												'autocomplete' => 'off-locality',
+											],
+											'name' => 'locality',
+											'clientOptions' => [
+												'minLength' => 2,
+												'maxItem' => 10,
+												'hint' => true,
+												'accent' => [
+													'from' => 'âăîşţșț',
+													'to' => 'aaistst',
+												],
+												'cancelButton' => false,
+												'dynamic' => true,
+												'searchOnFocus' => true,
+												'backdrop' => [
+													'background-color' => '#ffffff',
+													'opacity' => '0.4',
+												],
+												'source' => [
+													'results' => [
+														'display' => 'label',
+														'ajax' => new JsExpression('function (query) {
+															return {
+																"method": "POST",
+																"url": "' . Url::to(['/site/search']) . '",
+																"path": "results",
+																"data": {
+																	"locality": query,
+																	"county": $("#' . Html::getInputId($model, 'county') . '").val()
+																}
+															};
+														}'),
+													],
+												],
+											],
+										]) ?>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-md-4">
+										<?= $form->field($model, 'zip_code')->textInput() ?>
+									</div>
+									<div class="col-md-8">
+										<?= $form->field($model, 'address')->textInput() ?>
 									</div>
 								</div>
 							</fieldset>

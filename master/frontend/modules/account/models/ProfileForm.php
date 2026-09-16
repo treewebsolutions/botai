@@ -29,14 +29,9 @@ class ProfileForm extends User
 	public $pin;
 
 	/**
-	 * @var string The street name.
+	 * @var string The street address.
 	 */
-	public $street_name;
-
-	/**
-	 * @var string The street number.
-	 */
-	public $street_number;
+	public $address;
 
 	/**
 	 * @var string The locality.
@@ -91,8 +86,8 @@ class ProfileForm extends User
 			['gender', 'in', 'range' => [1, 2]],
 			[['date_of_birth'], 'safe'],
 			['marketing_recipient', 'boolean'],
-			[['new_password', 'new_password_confirm', 'first_name', 'middle_name', 'last_name', 'phone', 'pin', 'street_name', 'street_number', 'locality', 'zip_code', 'county'], 'string', 'max' => 255],
-			[['new_password', 'new_password_confirm', 'first_name', 'middle_name', 'last_name', 'phone', 'pin', 'street_name', 'street_number', 'locality', 'zip_code', 'county'], 'trim'],
+			[['new_password', 'new_password_confirm', 'first_name', 'middle_name', 'last_name', 'phone', 'pin', 'address', 'locality', 'zip_code', 'county'], 'string', 'max' => 255],
+			[['new_password', 'new_password_confirm', 'first_name', 'middle_name', 'last_name', 'phone', 'pin', 'address', 'locality', 'zip_code', 'county'], 'trim'],
 			['new_password', 'string', 'min' => 6],
 			['new_password_confirm', 'required', 'when' => function ($model) {
 				return !empty($model->new_password);
@@ -114,8 +109,7 @@ class ProfileForm extends User
 		return ArrayHelper::merge(parent::attributeLabels(), [
 			'imageFile' => Yii::t('label', 'Image'),
 			'pin' => Yii::t('label', 'Personal Identification Number'),
-			'street_name' => Yii::t('label', 'Street Name'),
-			'street_number' => Yii::t('label', 'Street Number'),
+			'address' => Yii::t('label', 'Address'),
 			'locality' => Yii::t('label', 'Locality'),
 			'zip_code' => Yii::t('label', 'Zip Code'),
 			'county' => Yii::t('label', 'County'),
@@ -143,8 +137,7 @@ class ProfileForm extends User
 		parent::afterFind();
 
 		$this->pin = $this->subscriber->pin;
-		$this->street_name = $this->subscriber->street_name;
-		$this->street_number = $this->subscriber->street_number;
+		$this->address = $this->subscriber->address;
 		$this->locality = $this->subscriber->locality;
 		$this->zip_code = $this->subscriber->zip_code;
 		$this->county = $this->subscriber->county;
@@ -176,8 +169,7 @@ class ProfileForm extends User
 				$subscriber->status = Subscriber::STATUS_ACTIVE;
 			}
 			$subscriber->pin = $this->pin;
-			$subscriber->street_name = $this->street_name;
-			$subscriber->street_number = $this->street_number;
+			$subscriber->address = $this->address;
 			$subscriber->locality = $this->locality;
 			$subscriber->county = $this->county;
 			$subscriber->country = $this->country;

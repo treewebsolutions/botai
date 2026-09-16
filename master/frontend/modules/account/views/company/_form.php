@@ -76,14 +76,6 @@ $shouldRenderModal = Yii::$app->request->isAjax;
 				</div>
 			</div>
 			<div class="row">
-				<div class="col-sm-8">
-					<?= $form->field($model, 'address')->textInput() ?>
-				</div>
-				<div class="col-sm-4">
-					<?= $form->field($model, 'zip_code')->textInput() ?>
-				</div>
-			</div>
-			<div class="row">
 				<div class="col-sm-4">
 					<?= $form->field($model, 'country')->widget(Select2::class, [
 						'data' => ArrayHelper::map(Country::find()
@@ -202,6 +194,14 @@ $shouldRenderModal = Yii::$app->request->isAjax;
 							],
 						],
 					])->hint(Yii::t('backend', 'Locality shall take one of the values “Sector 1”, “Sector2”,  “Sector  3”,  “Sector 4”,  “Sector  5”  or “Sector 6” if county is “Bucharest”.')) ?>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-4">
+					<?= $form->field($model, 'zip_code')->textInput() ?>
+				</div>
+				<div class="col-sm-8">
+					<?= $form->field($model, 'address')->textInput() ?>
 				</div>
 			</div>
 		</div>

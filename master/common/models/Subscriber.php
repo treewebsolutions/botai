@@ -92,7 +92,7 @@ class Subscriber extends CommonActiveRecord
 			[['user_id', 'code', 'status'], 'required'],
 			[['date_of_birth', 'created_at', 'updated_at'], 'safe'],
 			[['date_of_birth', 'created_at', 'updated_at'], 'default'],
-			[['external_id', 'code', 'pin', 'street_name', 'street_number', 'staircase', 'block', 'floor', 'apartment', 'locality', 'zip_code', 'county', 'country'], 'string', 'max' => 255],
+			[['external_id', 'code', 'pin', 'address', 'street_name', 'street_number', 'staircase', 'block', 'floor', 'apartment', 'locality', 'zip_code', 'county', 'country'], 'string', 'max' => 255],
 			[['code'], 'unique'],
             [['notes'], 'string'],
 			[['parent_id'], 'exist', 'skipOnError' => true, 'targetClass' => Subscriber::class, 'targetAttribute' => ['parent_id' => 'id']],
@@ -114,6 +114,7 @@ class Subscriber extends CommonActiveRecord
 			'code' => Yii::t('label', 'Code'),
 			'pin' => Yii::t('label', 'Pin'),
 			'date_of_birth' => Yii::t('label', 'Date Of Birth'),
+			'address' => Yii::t('label', 'Address'),
 			'street_name' => Yii::t('label', 'Street Name'),
 			'street_number' => Yii::t('label', 'Street Number'),
 			'staircase' => Yii::t('label', 'Staircase'),
@@ -215,8 +216,7 @@ class Subscriber extends CommonActiveRecord
 	public function getFullAddress()
 	{
 		return implode(', ', array_filter([
-			$this->street_name,
-			$this->street_number,
+			$this->address,
 			$this->locality,
 			$this->zip_code,
 			$this->county,

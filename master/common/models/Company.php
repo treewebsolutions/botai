@@ -277,8 +277,7 @@ class Company extends CommonActiveRecord
 	public function getFullAddress()
 	{
 		return implode(', ', array_filter([
-			$this->street_name,
-			$this->street_number,
+			$this->address,
 			$this->locality,
 			$this->zip_code,
 			$this->county,
