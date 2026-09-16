@@ -40,7 +40,11 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
 class KnowledgeBase extends CommonActiveRecord
 {
 	const PROVIDER_GENERIC = null;
-	/** Provider values mirror {@see Integration::TYPE_OPENAI} so the same labels apply. */
+	/**
+	 * Which model vendor this record talks to. A separate enum from
+	 * {@see Integration}'s type - it is stored in this table's own `provider`
+	 * column, so the values must stay put even when integration types move.
+	 */
 	const PROVIDER_OPENAI = 1;
 	const PROVIDER_CLAUDE = 2;
 

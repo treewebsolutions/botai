@@ -16,12 +16,6 @@ use Yii;
 class Integration extends \common\models\Integration
 {
 	/**
-	 * The hub numbers its own types, and SPV already holds 1 there. Redeclared so the
-	 * inherited [[findOpenAI()]] queries the master table with the master's value.
-	 */
-	const TYPE_OPENAI = 2;
-
-	/**
 	 * @inheritdoc
 	 * @throws \yii\base\InvalidConfigException
 	 */

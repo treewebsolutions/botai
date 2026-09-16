@@ -32,7 +32,12 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
 class Integration extends CommonActiveRecord
 {
 
-	const TYPE_OPENAI = 1;
+	/**
+	 * Same value as the hub's Integration::TYPE_OPENAI, so an integration type means
+	 * the same thing in every database. 1 is left free: it is SPV on the hub, which
+	 * tenants do not have, and skipping it keeps the two numberings aligned.
+	 */
+	const TYPE_OPENAI = 2;
 
 	/**
      * {@inheritdoc}

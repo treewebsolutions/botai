@@ -38,8 +38,8 @@ class Integration extends CommonActiveRecord
 	 * The platform-wide OpenAI account. A tenant with no integration of its own falls
 	 * back to this one, so the chat works before anybody configures anything.
 	 *
-	 * Note the value differs from the workspace table's TYPE_OPENAI: these are separate
-	 * tables in separate databases, and SPV already holds 1 here.
+	 * Same value as the workspace table's TYPE_OPENAI, so an integration type means the
+	 * same thing in every database. 1 is SPV here, and the tenants leave it free.
 	 */
 	const TYPE_OPENAI = 2;
 

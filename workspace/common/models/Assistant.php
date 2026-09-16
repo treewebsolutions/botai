@@ -40,7 +40,11 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  */
 class Assistant extends CommonActiveRecord
 {
-	/** Provider values mirror {@see Integration::TYPE_OPENAI}. */
+	/**
+	 * Which model vendor this record talks to. A separate enum from
+	 * {@see Integration}'s type - it is stored in this table's own `provider`
+	 * column, so the values must stay put even when integration types move.
+	 */
 	const PROVIDER_OPENAI = 1;
 	const PROVIDER_CLAUDE = 2;
 
