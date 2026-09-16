@@ -217,9 +217,16 @@ PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
 -- câte ori vrei. `* * * * * *` devine `* * * * *`, `0 0 * * * *` devine
 -- `0 0 * * *`.
 
+-- Normalizează întâi spaţierea, apoi păstrează primele 5 câmpuri. Numărarea
+-- spaţiilor nu era de ajuns: un spaţiu dublu sau unul la capăt scăpa rândul.
 UPDATE `scheduled_task`
-SET `cron_expression` = SUBSTRING_INDEX(`cron_expression`, ' ', 5)
-WHERE LENGTH(`cron_expression`) - LENGTH(REPLACE(`cron_expression`, ' ', '')) = 5;
+SET `cron_expression` = SUBSTRING_INDEX(TRIM(REGEXP_REPLACE(`cron_expression`, '[[:space:]]+', ' ')), ' ', 5)
+WHERE TRIM(REGEXP_REPLACE(`cron_expression`, '[[:space:]]+', ' ')) REGEXP '^[^ ]+( [^ ]+){5,}$';
+
+-- `0/10` e pas în sintaxa Quartz; cron scrie `*/10`, iar parserul îl refuză pe primul.
+UPDATE `scheduled_task`
+SET `cron_expression` = CONCAT('*/', SUBSTRING(`cron_expression`, 3))
+WHERE `cron_expression` LIKE '0/%';
 
 -- ── 5. integrările locale, şterse definitiv ────────────────────────────────
 --
