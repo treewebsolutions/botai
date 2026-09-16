@@ -583,7 +583,24 @@ class Workspace extends CommonActiveRecord
 		try {
 			// Create the database
 			if ($this->isLocalInstallEnvironment()) {
-				$db->createCommand("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8 COLLATE utf8_unicode_ci")->execute();
+				try {
+					$db->createCommand("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8 COLLATE utf8_unicode_ci")->execute();
+				} catch (\Exception $e) {
+					// This path runs raw SQL because no cPanel component is configured. On a
+					// shared host that combination cannot work: the MySQL user is never granted
+					// CREATE DATABASE, so the statement comes back as "Access denied" and the
+					// operator is left reading a PDO error about a database they never asked to
+					// create. Say which database is missing and both ways to get one.
+					throw new \Exception(sprintf(
+						'The database %s does not exist and cannot be created with the master credentials (%s): %s '
+							. 'On cPanel hosting create it under MySQL Databases and grant %s ALL PRIVILEGES on it, '
+							. 'or fill in the CPANEL_* credentials so the installer can create it through the API.',
+						$dbName,
+						$db->username,
+						$e->getMessage(),
+						$db->username
+					), 0, $e);
+				}
 				// Best effort: the master user usually owns the server locally (root), and
 				// MySQL 8 rejects the legacy `GRANT ... IDENTIFIED BY` form, so a refused
 				// grant must not abort the install. A truly unusable database fails loudly
@@ -1048,9 +1065,15 @@ class Workspace extends CommonActiveRecord
 			// Installing only when the database is missing or empty serves both. A tenant
 			// with tables keeps its conversations, messages and assistants untouched and is
 			// brought up to date through workspace/_database/<date>-tenant-update.sql.
-			if ($this->workspaceDatabaseNeedsInstall() && !$this->installDatabase()) {
-				throw new \Exception('Cannot create the workspace database.');
-			}
+			//
+			// A database that cannot be created must not cost the operator the rest of the
+			// repair. Reinstall exists for the directory, the symlinks and the routing, and
+			// until this step was added it did that work without touching the database at
+			// all - so a host that refuses CREATE DATABASE would now break a button that used
+			// to work. The failure is remembered, everything else still runs, and it is
+			// raised at the end with the reason installDatabase() recorded.
+			$databaseFailed = $this->workspaceDatabaseNeedsInstall() && !$this->installDatabase();
+
 			if (!$this->installDirectory()) {
 				throw new \Exception('Cannot create the workspace directory.');
 			}
@@ -1062,6 +1085,9 @@ class Workspace extends CommonActiveRecord
 			}
 			if (!$this->updateHtaccess()) {
 				throw new \Exception('Cannot update the .htaccess file.');
+			}
+			if ($databaseFailed) {
+				throw new \Exception('The workspace directory and routing were rebuilt, but the database could not be created.');
 			}
 			return true;
 		} catch (\Exception $e) {
