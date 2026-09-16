@@ -75,6 +75,13 @@ services:
       - ./php/zzz-error-reporting.ini:/usr/local/etc/php/conf.d/zzz-error-reporting.ini:ro
     environment:
       PROJECT_NAME: ${PROJECT_NAME:-botai}
+      # The one place the Docker database connection is named. The apps'
+      # common/config/main-local.php reads these and falls back to a plain local
+      # MySQL, so a config file that escapes this container - copied, zipped,
+      # uploaded - never points at the `db` service or carries its credentials.
+      DB_HOST: ${DB_HOST:-db}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
       # DocumentRoot resolved by apache.conf at startup. Override in .env to
       # switch between root-routed (Yii2 advanced, WordPress) and `public/`
       # framework conventions (Laravel, Symfony) without editing any config.
@@ -118,6 +125,12 @@ services:
     volumes:
       - ..:/var/www/html
       - ./php/zzz-error-reporting.ini:/usr/local/etc/php/conf.d/zzz-error-reporting.ini:ro
+    environment:
+      # Same reason as `web`: the tenant CLI runs resolve the connection from
+      # the environment, not from values baked into a file.
+      DB_HOST: ${DB_HOST:-db}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
