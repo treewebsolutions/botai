@@ -84,6 +84,45 @@ class PageUrlClassifierTest extends TestCase
 	}
 
 	/**
+	 * A multilingual site puts the language first. Filing those pages under "ro" and "en"
+	 * would say what language they are in and nothing about what they are.
+	 */
+	public function testALanguagePrefixIsSteppedOver()
+	{
+		$this->assertSame('servicii', PageUrlClassifier::classify('https://example.test/ro/servicii/'));
+		$this->assertSame('services', PageUrlClassifier::classify('https://example.test/en/services/implants/'));
+		$this->assertSame('services', PageUrlClassifier::classify('https://example.test/en-GB/services/'));
+		$this->assertSame('dienstleistungen', PageUrlClassifier::classify('https://example.test/de-DE/dienstleistungen/'));
+
+		// A language nobody configured here is still a language prefix by its shape.
+		$this->assertSame('szolgaltatasok', PageUrlClassifier::classify('https://example.test/hu/szolgaltatasok/'));
+	}
+
+	/**
+	 * The language home page is a home page.
+	 */
+	public function testALanguageOnItsOwnIsHome()
+	{
+		$this->assertSame('home', PageUrlClassifier::classify('https://example.test/ro/'));
+		$this->assertSame('home', PageUrlClassifier::classify('https://example.test/en'));
+	}
+
+	/**
+	 * Only the first segment can be a language, and only two-letter codes qualify: a
+	 * three-letter slug is a section, not a language.
+	 */
+	public function testSectionsAreNotMistakenForLanguages()
+	{
+		$this->assertSame('cat', PageUrlClassifier::classify('https://example.test/cat/pisici/'), 'three letters is a section');
+		$this->assertSame('art', PageUrlClassifier::classify('https://example.test/art/'));
+		$this->assertSame(
+			'servicii',
+			PageUrlClassifier::classify('https://example.test/servicii/ro/'),
+			'a language deeper in the path is not a prefix'
+		);
+	}
+
+	/**
 	 * A URL with no path, and no URL at all.
 	 */
 	public function testEmptyPaths()
