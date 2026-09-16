@@ -441,9 +441,27 @@ class ExportController extends MainController
 			return $value;
 		}
 
-		$trimmed = ltrim($value, "\t\r\n \0\x0B");
-		if ($trimmed !== '' && strpos("=+-@", $trimmed[0]) !== false) {
-			return "'" . $trimmed;
+		// Leading whitespace still counts: a spreadsheet trims it before parsing, and so
+		// would a check that did not.
+		$trimmed = ltrim($value, " \t\n\r\0\x0B");
+		if ($trimmed === '') {
+			return $value;
+		}
+
+		// Amounts arrive from DECIMAL columns as strings, and a negative one starts with
+		// a trigger character. Prefixing those would turn every "-19.04" into text and
+		// break the totals in the invoice exports, so a value that is simply a number
+		// passes through - it cannot carry an expression.
+		if (is_numeric($trimmed)) {
+			return $value;
+		}
+
+		// The full-width variants are the same characters to a spreadsheet's parser.
+		$triggers = ['=', '+', '-', '@', "\t", "\r", "\n", "\u{FF1D}", "\u{FF0B}", "\u{FF0D}", "\u{FF20}"];
+		foreach ($triggers as $trigger) {
+			if (mb_strpos($trimmed, $trigger) === 0) {
+				return "'" . $value;
+			}
 		}
 
 		return $value;
