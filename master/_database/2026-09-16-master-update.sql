@@ -71,6 +71,43 @@ LIMIT 1;
 -- FROM DUAL
 -- WHERE NOT EXISTS (SELECT 1 FROM `integration` WHERE `type` = 2 AND `deleted` = 0);
 
+
+-- ── PASUL 2: jurnalul actualizărilor de bază ale workspace-urilor ──────────
+--
+-- `WorkspaceDatabaseUpdateLog` scrie aici fiecare interogare rulată prin ecranul
+-- de actualizare în masă, dar tabelul n-a existat niciodată în botai: modelul a
+-- fost portat din masteranunturi fără schema lui, aşa că un bulk update se oprea
+-- cu „The table does not exist: {{%workspace_database_update_log}}".
+--
+-- Faţă de masteranunturi, cheile sunt INT, nu BINARY(16): botai a rămas pe chei
+-- numerice, iar `workspace_id` trebuie să se potrivească cu `workspace`.`id`.
+--
+-- `batch_id` grupează rândurile produse de un singur submit, ca o rulare peste
+-- şase tenanţi să poată fi citită ca un tot.
+
+CREATE TABLE IF NOT EXISTS `workspace_database_update_log` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `workspace_id` INT(11) NOT NULL,
+  `batch_id` VARCHAR(32) NOT NULL COMMENT 'Grupează rândurile unui singur submit.',
+  `workspace_code` VARCHAR(255) NULL DEFAULT NULL,
+  `workspace_url` VARCHAR(255) NULL DEFAULT NULL,
+  `query` TEXT NOT NULL,
+  `error` TEXT NULL DEFAULT NULL,
+  `created_by` INT(11) NULL DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  `status` SMALLINT(6) NOT NULL COMMENT '0 = eroare, 1 = succes',
+  PRIMARY KEY (`id`),
+  INDEX `workspace_database_update_log_idx_batch_id` (`batch_id` ASC),
+  INDEX `workspace_database_update_log_idx_workspace_code` (`workspace_code` ASC),
+  INDEX `workspace_database_update_log_idx_status` (`status` ASC),
+  INDEX `fk_workspace_database_update_log_workspace1_idx` (`workspace_id` ASC),
+  CONSTRAINT `fk_workspace_database_update_log_workspace1`
+    FOREIGN KEY (`workspace_id`)
+    REFERENCES `workspace` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ── Verificare înainte de scriptul de tenant ───────────────────────────────
 --
 --   SELECT id, name, type, `default`, status, CHAR_LENGTH(data) AS len
