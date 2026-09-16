@@ -36,6 +36,14 @@ class CompanyForm extends Company
 	{
 		return ArrayHelper::merge(parent::rules(), [
 			[['tin', 'name', 'status', 'email', 'phone', 'address', 'country', 'locality'], 'required'],
+			// Without this the upload was unvalidated: $imageFile is populated at save
+			// time and any extension, including .php, was accepted.
+			[['imageFile'], 'file',
+				'extensions' => Yii::$app->params['image.extensions'],
+				'mimeTypes' => Yii::$app->params['image.mimeTypes'],
+				'maxSize' => Yii::$app->settings->get('maxFileSize'),
+				'skipOnEmpty' => true,
+			],
 			[['county'], 'required', 'when' => function ($model) {
 				return $model->country == 'RO';
 			}, 'whenClient' => 'function (attribute, value) {
@@ -66,6 +74,24 @@ class CompanyForm extends Company
 	public function scenarios()
 	{
 		return Model::scenarios();
+	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * The file validator needs the attribute populated before validate() runs. Without
+	 * this the rule sat on a null value, skipOnEmpty let it through, and saveFiles()
+	 * then took the upload straight from the request under the client's own extension.
+	 */
+	public function load($data, $formName = null)
+	{
+		$loaded = parent::load($data, $formName);
+
+		if (!empty($data)) {
+			$this->imageFile = UploadedFile::getInstance($this, 'imageFile');
+		}
+
+		return $loaded;
 	}
 
 	/**

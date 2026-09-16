@@ -30,6 +30,10 @@ $config = [
 	'basePath' => dirname(__DIR__),
 	'controllerNamespace' => 'console\controllers',
 	'language' => 'en-US',
+	// The real application params, so the upload allow-lists and the rest of the
+	// configuration the models read are the ones production uses rather than
+	// whatever each test happens to set.
+	'params' => require __DIR__ . '/../common/config/params.php',
 	'components' => [
 		// Empty settings store: CommonActiveRecord::delete() consults
 		// Yii::$app->settings->get('enableSoftDelete') on every delete, and other code

@@ -95,7 +95,12 @@ class ProfileForm extends User
 				return attribute.$form.find("[name*=\"[new_password]\"]").val() != "";
 			}'],
 			['new_password_confirm', 'compare', 'compareAttribute' => 'new_password', 'message' => Yii::t('common', 'Passwords don\'t match.')],
-			[['imageFile'], 'file', 'extensions' => ['jpeg', 'jpg', 'png', 'gif'], 'mimeTypes' => ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'], 'maxSize' => Yii::$app->settings->get('maxFileSize'), 'skipOnEmpty' => true],
+			[['imageFile'], 'file',
+				'extensions' => Yii::$app->params['image.extensions'],
+				'mimeTypes' => Yii::$app->params['image.mimeTypes'],
+				'maxSize' => Yii::$app->settings->get('maxFileSize'),
+				'skipOnEmpty' => true,
+			],
 			[['parent_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['parent_id' => 'id']],
 			[['country'], 'exist', 'skipOnError' => true, 'targetClass' => Country::class, 'targetAttribute' => ['country' => 'iso_alpha2']],
 		];
@@ -215,6 +220,24 @@ class ProfileForm extends User
 			$this->addError('', $e->getMessage());
 			return false;
 		}
+	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * The file validator needs the attribute populated before validate() runs. Without
+	 * this the rule sat on a null value, skipOnEmpty let it through, and saveFiles()
+	 * then took the upload straight from the request under the client's own extension.
+	 */
+	public function load($data, $formName = null)
+	{
+		$loaded = parent::load($data, $formName);
+
+		if (!empty($data)) {
+			$this->imageFile = UploadedFile::getInstance($this, 'imageFile');
+		}
+
+		return $loaded;
 	}
 
 	/**

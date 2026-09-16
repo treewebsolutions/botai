@@ -86,6 +86,14 @@ class SubscriberForm extends Subscriber
 	{
 		return ArrayHelper::merge(parent::rules(), [
 			[['first_name', 'last_name', 'email', 'phone', 'gender'], 'required'],
+			// Without this the upload was unvalidated: $imageFile is populated at save
+			// time and any extension, including .php, was accepted.
+			[['imageFile'], 'file',
+				'extensions' => Yii::$app->params['image.extensions'],
+				'mimeTypes' => Yii::$app->params['image.mimeTypes'],
+				'maxSize' => Yii::$app->settings->get('maxFileSize'),
+				'skipOnEmpty' => true,
+			],
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'string', 'max' => 255],
 			[['first_name', 'middle_name', 'last_name', 'email', 'phone'], 'trim'],
 			[['email'], 'email'],

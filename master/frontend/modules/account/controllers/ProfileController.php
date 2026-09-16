@@ -11,6 +11,7 @@ use yii\helpers\FileHelper;
 use yii\helpers\Inflector;
 use yii\helpers\StringHelper;
 use yii\web\NotFoundHttpException;
+use yii\validators\FileValidator;
 use yii\web\UploadedFile;
 
 class ProfileController extends MainController
@@ -58,6 +59,11 @@ class ProfileController extends MainController
 	}
 
 	/**
+	 * @var string[] The columns this endpoint is allowed to write a file name into.
+	 */
+	const UPLOADABLE_ATTRIBUTES = ['image'];
+
+	/**
 	 * Uploads a new file.
 	 *
 	 * @return mixed
@@ -72,8 +78,27 @@ class ProfileController extends MainController
 		$response = [];
 
 		try {
-			if (!$model->hasAttribute($attribute) || !($file = UploadedFile::getInstanceByName($fileName))) {
+			// hasAttribute() is true for every column on `user`, so the caller could
+			// name auth_key or password_hash here and have the generated file name
+			// written into it. Only the avatar column may be targeted.
+			if (!in_array($attribute, static::UPLOADABLE_ATTRIBUTES, true)) {
 				throw new \Exception();
+			}
+			if (!($file = UploadedFile::getInstanceByName($fileName))) {
+				throw new \Exception();
+			}
+
+			// This endpoint wrote whatever arrived straight into the uploads tree under
+			// the client's own extension - the report's critical finding. Run the same
+			// allow-list the forms use, with the content checked against the extension.
+			$validator = new FileValidator([
+				'extensions' => Yii::$app->params['image.extensions'],
+				'mimeTypes' => Yii::$app->params['image.mimeTypes'],
+				'checkExtensionByMimeType' => true,
+				'maxSize' => Yii::$app->settings->get('maxFileSize'),
+			]);
+			if (!$validator->validate($file, $error)) {
+				throw new \Exception($error);
 			}
 
 			$dirPath = Yii::getAlias("@uploads/user/{$model->id}");

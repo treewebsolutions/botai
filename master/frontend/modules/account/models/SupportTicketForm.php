@@ -35,7 +35,13 @@ class SupportTicketForm extends SupportTicket
 		return ArrayHelper::merge(parent::rules(), [
 			[['support_ticket_status_id', 'support_ticket_priority_id', 'support_ticket_department_id', 'subject', 'content'], 'required'],
 			[['subject', 'content'], 'trim'],
-			[['attachmentFiles'], 'file', 'maxSize' => Yii::$app->settings->get('maxFileSize'), 'maxFiles' => 5, 'skipOnEmpty' => true],
+			[['attachmentFiles'], 'file',
+				'extensions' => Yii::$app->params['file.extensions'],
+				'mimeTypes' => Yii::$app->params['file.mimeTypes'],
+				'maxSize' => Yii::$app->settings->get('maxFileSize'),
+				'maxFiles' => 5,
+				'skipOnEmpty' => true,
+			],
 		]);
 	}
 
@@ -60,6 +66,24 @@ class SupportTicketForm extends SupportTicket
 	public function scenarios()
 	{
 		return Model::scenarios();
+	}
+
+	/**
+	 * {@inheritdoc}
+	 *
+	 * The file validator needs the attribute populated before validate() runs. Without
+	 * this the rule sat on a null value, skipOnEmpty let it through, and saveFiles()
+	 * then took the uploads straight from the request under the client's own extensions.
+	 */
+	public function load($data, $formName = null)
+	{
+		$loaded = parent::load($data, $formName);
+
+		if (!empty($data)) {
+			$this->attachmentFiles = UploadedFile::getInstances($this, 'attachmentFiles');
+		}
+
+		return $loaded;
 	}
 
 	/**
