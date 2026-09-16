@@ -255,11 +255,6 @@
 							"value": "123456",
 							"description": "password, required (if password), string(255)",
 							"type": "text"
-						},
-						{
-							"key": "bypass",
-							"value": "1",
-							"type": "text"
 						}
 					]
 				},
@@ -503,11 +498,6 @@
 							"value": "1",
 							"description": "contractor_id, required, integer",
 							"type": "text"
-						},
-						{
-							"key": "bypass",
-							"value": "1",
-							"type": "text"
 						}
 					]
 				},
@@ -521,54 +511,6 @@
 						"api",
 						"v1",
 						"workspaces"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "contractor/clocking",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "POST",
-				"header": [
-					{
-						"key": "Accept-Language",
-						"value": "{{language}}",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "formdata",
-					"formdata": [
-						{
-							"key": "code",
-							"value": "ScdI2tfi",
-							"description": "code, required, string(255)",
-							"type": "text"
-						}
-					]
-				},
-				"url": {
-					"raw": "https://{{baseUrl}}/api/v1/contractors/clocking",
-					"protocol": "https",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"api",
-						"v1",
-						"contractors",
-						"clocking"
 					]
 				}
 			},

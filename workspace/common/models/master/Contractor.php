@@ -305,7 +305,6 @@ class Contractor extends CommonActiveRecord
 							'status' => static::STATUS_ACTIVE,
 							'contractor_id' => $model->id,
 							'url' => Inflector::slug($attributes['name']),
-							'bypass' => '1'
 						],
 						CURLOPT_HTTPHEADER => [
 							'Accept-Language: ' . Yii::$app->language,
@@ -371,7 +370,6 @@ class Contractor extends CommonActiveRecord
 						'status' => static::STATUS_ACTIVE,
 						'contractor_id' => $model->id,
 						'url' => Inflector::slug($attributes['name']),
-						'bypass' => '1'
 					],
 					CURLOPT_HTTPHEADER => [
 						'Accept-Language: ' . Yii::$app->language,

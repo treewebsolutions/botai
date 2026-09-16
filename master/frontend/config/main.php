@@ -106,10 +106,6 @@ return [
 					'pattern' => 'ab2<auth_key>',
 					'route' => '/site/ab2',
 				],
-				[
-					'pattern' => 'qr-code/<code>',
-					'route' => '/site/qr-code',
-				],
 			],
 		],
 	],

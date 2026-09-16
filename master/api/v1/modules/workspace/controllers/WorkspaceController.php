@@ -3,7 +3,6 @@
 namespace api\v1\modules\workspace\controllers;
 
 use api\v1\modules\workspace\models\Workspace;
-use api\v1\modules\workspace\models\WorkspaceForm;
 use api\v1\modules\workspace\services\WorkspaceService;
 use Yii;
 use yii\filters\AccessControl;
@@ -13,7 +12,6 @@ use yii\rest\Controller;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\ServerErrorHttpException;
-use yii\web\UnprocessableEntityHttpException;
 
 class WorkspaceController extends Controller
 {
@@ -35,7 +33,6 @@ class WorkspaceController extends Controller
 	 */
 	public function behaviors()
 	{
-		$role = Yii::$app->request->bodyParams['bypass'] ? '@' : '';
 		return ArrayHelper::merge(parent::behaviors(), [
 			'authenticator' => [
 				'class' => HttpBearerAuth::class,
@@ -51,27 +48,17 @@ class WorkspaceController extends Controller
 					[
 						'allow' => true,
 						'actions' => ['index', 'view'],
-						'roles' => [$role ?: 'viewWorkspace'],
-					],
-					[
-						'allow' => true,
-						'actions' => ['create'],
-						'roles' => [$role ?: 'createWorkspace'],
-					],
-					[
-						'allow' => true,
-						'actions' => ['update'],
-						'roles' => [$role ?: 'updateWorkspace'],
+						'roles' => ['viewWorkspace'],
 					],
 					[
 						'allow' => true,
 						'actions' => ['delete'],
-						'roles' => [$role ?: 'deleteWorkspace'],
+						'roles' => ['deleteWorkspace'],
 					],
 					[
 						'allow' => true,
 						'actions' => ['restore'],
-						'roles' => [$role ?: 'restoreWorkspace'],
+						'roles' => ['restoreWorkspace'],
 					],
 				],
 			],
@@ -117,74 +104,7 @@ class WorkspaceController extends Controller
 		return $this->findModel($id);
 	}
 
-	/**
-	 * Creates a new [[Workspace]] model.
-	 *
-	 * @return mixed
-	 * @throws \yii\web\ServerErrorHttpException if there is any unknown error when trying to create the model
-	 * @throws \yii\web\UnprocessableEntityHttpException if there are validation errors
-	 */
-	public function actionCreate()
-	{
-		$model = new WorkspaceForm();
 
-		try {
-			if ($model->load(Yii::$app->request->bodyParams, '') && $model->save()) {
-				Yii::$app->response->statusCode = 201;
-				$data = $model->attributes;
-				return [
-					'message' => Yii::t('api', 'Record successfully created.'),
-					'data' => $data,
-				];
-			}
-
-			if ($model->hasErrors()) {
-				throw new UnprocessableEntityHttpException();
-			}
-
-			throw new ServerErrorHttpException();
-		} catch (\Throwable $e) {
-			Yii::$app->response->statusCode = $e->statusCode ?? 500;
-			Yii::$app->response->data['message'] = Yii::t('api', 'Record creation failed.');
-			Yii::$app->response->data['errors'] = $model->getErrors();
-		}
-
-		return Yii::$app->response;
-	}
-
-	/**
-	 * Updates an existing [[Workspace]] model.
-	 *
-	 * @param int|string $id The Workspace model ID.
-	 * @return mixed
-	 * @throws \yii\web\NotFoundHttpException if the model cannot be found
-	 * @throws \yii\web\ServerErrorHttpException if there is any unknown error when trying to update the model
-	 * @throws \yii\web\UnprocessableEntityHttpException if there are validation errors
-	 */
-	public function actionUpdate($id)
-	{
-		$model = $this->findModel($id, WorkspaceForm::class);
-		try {
-			if ($model->load(Yii::$app->request->bodyParams, '') && $model->save()) {
-				$data = $model->attributes;
-				return [
-					'message' => Yii::t('api', 'Record successfully updated.'),
-					'data' => $data,
-				];
-			}
-
-			if ($model->hasErrors()) {
-				throw new UnprocessableEntityHttpException();
-			}
-
-			throw new ServerErrorHttpException();
-		} catch (\Exception $e) {
-			Yii::$app->response->statusCode = $e->statusCode ?? 500;
-			Yii::$app->response->data['message'] = Yii::t('api', 'Record update failed.');
-			Yii::$app->response->data['errors'] = $model->getErrors();
-		}
-		return Yii::$app->response;
-	}
 
 	/**
 	 * Deletes an existing [[Workspace]] model.
@@ -289,7 +209,7 @@ class WorkspaceController extends Controller
 	 * @param int $id
 	 * @param \yii\db\ActiveRecord|string|null $modelName
 	 * @param bool $asActiveQuery
-	 * @return \yii\db\ActiveQuery|\yii\db\ActiveRecord|Workspace|WorkspaceForm the loaded model
+	 * @return \yii\db\ActiveQuery|\yii\db\ActiveRecord|Workspace the loaded model
 	 * @throws \yii\web\NotFoundHttpException if the model cannot be found
 	 */
 	protected function findModel($id, $modelName = null, $asActiveQuery = false)

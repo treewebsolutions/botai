@@ -43,7 +43,6 @@ class UserController extends Controller
 	 */
 	public function behaviors()
 	{
-		$role = Yii::$app->request->bodyParams['bypass'] ? '@' : '';
 		return ArrayHelper::merge(parent::behaviors(), [
 			'authenticator' => [
 				'class' => HttpBearerAuth::class,
@@ -65,27 +64,27 @@ class UserController extends Controller
 					[
 						'allow' => true,
 						'actions' => ['index', 'view'],
-						'roles' => [$role ?: 'viewUser'],
+						'roles' => ['viewUser'],
 					],
 					[
 						'allow' => true,
 						'actions' => ['create'],
-						'roles' => [$role ?: 'createUser'],
+						'roles' => ['createUser'],
 					],
 					[
 						'allow' => true,
 						'actions' => ['update'],
-						'roles' => [$role ?: 'updateUser'],
+						'roles' => ['updateUser'],
 					],
 					[
 						'allow' => true,
 						'actions' => ['delete'],
-						'roles' => [$role ?: 'deleteUser'],
+						'roles' => ['deleteUser'],
 					],
 					[
 						'allow' => true,
 						'actions' => ['restore'],
-						'roles' => [$role ?: 'restoreUser'],
+						'roles' => ['restoreUser'],
 					],
 				],
 			],
