@@ -31,6 +31,7 @@ class ScraperController extends Controller
 	{
 		list($page, $isNew) = static::findNextPage();
 		if ($page === null) {
+			$this->reportNothingDue();
 			return ExitCode::OK;
 		}
 
@@ -64,6 +65,44 @@ class ScraperController extends Controller
 
 		$this->stdout('[' . date('Y-m-d H:i:s') . '] ' . ($isNew ? 'Crawled ' : 'Refreshed ') . $page->url . "\n");
 		return ExitCode::OK;
+	}
+
+	/**
+	 * Says why there was nothing to do.
+	 *
+	 * Printing nothing at all is indistinguishable from the command being broken, and the
+	 * two reasons want different things from the operator: a crawl that has not been
+	 * started needs a first address, while a crawl that is simply up to date needs
+	 * nothing.
+	 *
+	 * @return void
+	 */
+	protected function reportNothingDue()
+	{
+		$stamp = '[' . date('Y-m-d H:i:s') . '] ';
+		$total = (int) Page::find()->where(['deleted' => Page::NO])->count();
+
+		if ($total === 0) {
+			$this->stdout($stamp . "No pages yet - nothing to crawl.\n");
+			$this->stdout("Add the site's address under Pages to start the crawl; the links found there queue themselves.\n");
+			return;
+		}
+
+		$hours = (int) (Yii::$app->params['scraper.refreshAfterHours'] ?? static::DEFAULT_REFRESH_AFTER_HOURS);
+		if ($hours <= 0) {
+			$this->stdout($stamp . "{$total} pages, all crawled. Refreshing is off (scraper.refreshAfterHours = 0).\n");
+			return;
+		}
+
+		$oldest = Page::find()
+			->where(['status' => Page::STATUS_ACTIVE, 'deleted' => Page::NO])
+			->min('updated_at');
+
+		$this->stdout($stamp . "Nothing due: {$total} pages, none older than {$hours}h.\n");
+		if ($oldest) {
+			$due = date('Y-m-d H:i:s', strtotime($oldest) + $hours * 3600);
+			$this->stdout("Least recently fetched: {$oldest}, due {$due}.\n");
+		}
 	}
 
 	/**
