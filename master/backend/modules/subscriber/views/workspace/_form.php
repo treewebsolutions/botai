@@ -74,6 +74,16 @@ use tws\helpers\Url;
 			])->textInput(['class' => 'form-control text-lowercase']) ?>
         </div>
 	</div>
+	<div class="row">
+		<div class="col-sm-6">
+			<?= $form->field($model, 'domain')
+				->textInput([
+					'class' => 'form-control text-lowercase',
+					'placeholder' => 'example.ro',
+				])
+				->hint(Yii::t('common', 'Optional. The tenant directory is named after this instead of the URL slug, and on cPanel it is the addon domain that serves the workspace. Changing it moves an installed workspace.')) ?>
+		</div>
+	</div>
 	<div class="form-actions floating">
 		<?= Html::submitButton('<span class="fa fa-check"></span>', [
 			'class' => 'btn btn-xlg btn-fab btn-success',

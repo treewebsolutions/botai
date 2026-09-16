@@ -117,6 +117,26 @@ $this->params['actions'] = [
 				},
 			],
 			[
+				'format' => 'raw',
+				'label' => Yii::t('label', 'Domain'),
+				'value' => function (Workspace $model) {
+					if (!$model->domain) {
+						return '&mdash;';
+					}
+					// The column may hold a bare host or a full URL; link the href either way.
+					$href = strpos($model->domain, '://') === false ? "https://{$model->domain}" : $model->domain;
+					return Html::a(Html::encode($model->domain), $href, ['target' => '_blank']);
+				},
+			],
+			[
+				'format' => 'html',
+				'label' => Yii::t('label', 'Directory'),
+				'value' => function (Workspace $model) {
+					$name = $model->getDirectoryName();
+					return $name === null ? '&mdash;' : Html::tag('code', 'workspaces/' . Html::encode($name));
+				},
+			],
+			[
 				'format' => 'html',
 				'label' => Yii::t('label', 'Subscriber'),
 				'value' => function (Workspace $model) {

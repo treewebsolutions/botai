@@ -95,6 +95,7 @@ class Workspace extends CommonActiveRecord
 			'subscription_id' => Yii::t('label', 'Subscription ID'),
 			'code' => Yii::t('label', 'Code'),
 			'url' => Yii::t('label', 'Url'),
+			'domain' => Yii::t('label', 'Domain'),
 			'type' => Yii::t('label', 'Type'),
 			'created_by' => Yii::t('label', 'Created By'),
 			'updated_by' => Yii::t('label', 'Updated By'),
@@ -296,16 +297,33 @@ class Workspace extends CommonActiveRecord
 		$domain = trim((string) ($domain ?? $this->domain));
 		$url = trim((string) ($url ?? $this->url), "/ \t");
 
-		if ($domain !== '') {
-			$host = parse_url(strpos($domain, '://') === false ? "http://{$domain}" : $domain, PHP_URL_HOST);
-			$key = preg_replace('/^www\./i', '', $host ?: trim($domain, '/'));
-		} else {
-			$key = $url;
-		}
+		$key = $domain !== '' ? static::normalizeHost($domain) : $url;
 
-		$key = strtolower(trim($key, "/ \t"));
+		$key = strtolower(trim((string) $key, "/ \t"));
 
 		return $key === '' ? null : $key;
+	}
+
+	/**
+	 * Reduces whatever the `domain` column holds to the bare host name that keys the
+	 * tenant directory: `https://www.Example.ro/` and `example.ro` both give `example.ro`.
+	 *
+	 * Shared with the form validation, so what is checked on save is exactly what the
+	 * directory is later named after.
+	 *
+	 * @param string|null $domain
+	 * @return string
+	 */
+	public static function normalizeHost($domain)
+	{
+		$domain = trim((string) $domain);
+		if ($domain === '') {
+			return '';
+		}
+
+		$host = parse_url(strpos($domain, '://') === false ? "http://{$domain}" : $domain, PHP_URL_HOST);
+
+		return strtolower(trim(preg_replace('/^www\./i', '', $host ?: trim($domain, '/')), "/ \t"));
 	}
 
 	/**
@@ -883,17 +901,24 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
-	 * Applies a URL slug change to an installed Workspace: rewrites the root .htaccess
-	 * rule and the baseUrl entries of the tenant config files. When the directory is
-	 * keyed by the URL (no domain set) the tenant directory is renamed as well.
+	 * Applies a URL slug or domain change to an installed Workspace: rewrites the root
+	 * .htaccess rule and the baseUrl entries of the tenant config files, renaming the
+	 * tenant directory when the key it is named after changed.
+	 *
+	 * The domain wins over the URL in {@see getDirectoryName()}, so setting, clearing or
+	 * editing it moves the directory just as renaming the slug of a domain-less tenant
+	 * does. Pass the previous domain explicitly - `null` means "unchanged", while a
+	 * tenant that had no domain must pass `''`, or the new one would be read back here
+	 * and the old directory left orphaned.
 	 *
 	 * @param string $previousUrl the URL slug before the change
+	 * @param string|null $previousDomain the domain before the change, or null when it did not change
 	 * @return bool
 	 */
-	public function saveUrl($previousUrl)
+	public function saveUrl($previousUrl, $previousDomain = null)
 	{
 		$dirPath = $this->getDirectoryPath();
-		$previousDirName = $this->getDirectoryName(null, $previousUrl);
+		$previousDirName = $this->getDirectoryName($previousDomain, $previousUrl);
 		$previousDirPath = $previousDirName === null ? null : Yii::getAlias("@base/workspaces/{$previousDirName}");
 
 		if ($dirPath && $previousDirPath && $previousDirPath !== $dirPath) {
