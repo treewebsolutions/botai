@@ -24,6 +24,7 @@ use yii2tech\ar\softdelete\SoftDeleteBehavior;
  * @property int $chunk_size
  * @property int $chunk_overlap
  * @property int $tokens_per_file
+ * @property int $default
  * @property string $expire_at
  * @property int $created_by
  * @property int $updated_by
@@ -105,7 +106,7 @@ class KnowledgeBase extends CommonActiveRecord
 	{
 		return [
 			[['name', 'status'], 'required'],
-			[['provider', 'chunk_size', 'chunk_overlap', 'tokens_per_file', 'created_by', 'updated_by', 'status', 'deleted'], 'integer'],
+			[['provider', 'chunk_size', 'chunk_overlap', 'tokens_per_file', 'default', 'created_by', 'updated_by', 'status', 'deleted'], 'integer'],
 			[['expire_at', 'created_at', 'updated_at'], 'safe'],
 			[['description'], 'string'],
 			[['name', 'embedding_model', 'vector_store_id'], 'string', 'max' => 255],
@@ -129,6 +130,7 @@ class KnowledgeBase extends CommonActiveRecord
 			'chunk_size' => Yii::t('label', 'Chunk Size'),
 			'chunk_overlap' => Yii::t('label', 'Chunk Overlap'),
 			'tokens_per_file' => Yii::t('label', 'Tokens Per File'),
+			'default' => Yii::t('label', 'Default'),
 			'expire_at' => Yii::t('label', 'Expire At'),
 			'created_by' => Yii::t('label', 'Created By'),
 			'updated_by' => Yii::t('label', 'Updated By'),

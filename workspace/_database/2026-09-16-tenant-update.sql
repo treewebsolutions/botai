@@ -168,6 +168,26 @@ CREATE TABLE IF NOT EXISTS `record_vector_index` (
 ;
 
 
+-- ── 4b. knowledge base-ul implicit ─────────────────────────────────────────
+--
+-- Indexarea paginilor scrape-uite merge în knowledge base-ul marcat implicit, la
+-- fel cum cheia OpenAI vine din integrarea marcată implicită. Fără coloană,
+-- alegerea cădea pe „prima activă după id", adică pe ordinea de creare.
+
+SET @sql := IF(
+    (SELECT COUNT(*) FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'knowledge_base' AND column_name = 'default') = 0,
+    'ALTER TABLE `knowledge_base` ADD `default` TINYINT(1) NOT NULL DEFAULT 0 AFTER `tokens_per_file`, ADD INDEX `default` (`default`)',
+    'DO 0');
+PREPARE s FROM @sql; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- Dacă există deja exact un knowledge base activ şi niciunul nu e marcat, el este
+-- cel implicit: e ceea ce codul alegea oricum înainte de coloană.
+UPDATE `knowledge_base` SET `default` = 1
+WHERE `deleted` = 0 AND `status` = 1
+  AND (SELECT * FROM (SELECT COUNT(*) FROM `knowledge_base` WHERE `deleted` = 0 AND `status` = 1) AS c) = 1
+  AND (SELECT * FROM (SELECT COUNT(*) FROM `knowledge_base` WHERE `deleted` = 0 AND `default` = 1) AS d) = 0;
+
 -- ── 5. integrările locale, şterse definitiv ────────────────────────────────
 --
 --     Rulează DOAR după ce cheia e pe hub şi ai confirmat că un tenant o vede

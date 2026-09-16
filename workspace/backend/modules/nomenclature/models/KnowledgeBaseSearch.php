@@ -31,6 +31,7 @@ class KnowledgeBaseSearch extends DataTableAction
 				'kb.chunk_size',
 				'kb.chunk_overlap',
 				'kb.tokens_per_file',
+				'kb.default',
 				'kb.expire_at',
 				'kb.created_by',
 				'kb.created_at',
@@ -148,6 +149,13 @@ class KnowledgeBaseSearch extends DataTableAction
 				},
 				'tokens_per_file' => function (KnowledgeBase $model) {
 					return $model->tokens_per_file ?: '&mdash;';
+				},
+				'default' => function (KnowledgeBase $model) {
+					// Where scraped pages are indexed, so it is worth seeing at a glance
+					// which base that is without opening each one.
+					return $model->default
+						? Html::tag('span', Yii::t('label', 'Default'), ['class' => 'label label-primary'])
+						: '&mdash;';
 				},
 				'expire_at' => function (KnowledgeBase $model) {
 					return $model->expire_at ? Yii::$app->formatter->asDatetime($model->expire_at) : '&mdash;';

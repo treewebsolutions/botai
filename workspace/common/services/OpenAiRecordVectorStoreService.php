@@ -927,6 +927,24 @@ class OpenAiRecordVectorStoreService
 				}
 			}
 
+			// The knowledge base marked default, the way the OpenAI key comes from the
+			// integration marked default. This is where scraped pages are indexed, so the
+			// choice is a deliberate one rather than whichever base happens to be linked
+			// to an assistant or to have the lowest id.
+			$kb = KnowledgeBase::find()
+				->where([
+					'provider' => KnowledgeBase::PROVIDER_OPENAI,
+					'status' => KnowledgeBase::STATUS_ACTIVE,
+					'deleted' => KnowledgeBase::NO,
+					'default' => KnowledgeBase::YES,
+				])
+				->orderBy(['id' => SORT_ASC])
+				->one();
+			if ($kb !== null) {
+				self::$cachedKnowledgeBase = $kb;
+				return $kb;
+			}
+
 			// Prefer the KB(s) linked to the chat assistant configured in the backend.
 			$assistant = Assistant::findChatAssistant();
 			if ($assistant !== null) {
@@ -941,7 +959,8 @@ class OpenAiRecordVectorStoreService
 				}
 			}
 
-			// Last resort: any active OpenAI KB (oldest first, deterministic).
+			// Last resort: any active OpenAI KB. Nothing is marked default by this point,
+			// so oldest first, which at least makes the answer the same every time.
 			$kb = KnowledgeBase::find()
 				->where([
 					'provider' => KnowledgeBase::PROVIDER_OPENAI,

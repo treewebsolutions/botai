@@ -166,6 +166,11 @@ $this->params['actions'] = [
 				'filter' => ['text'],
 			],
 			[
+				'data' => 'default',
+				'title' => Yii::t('label', 'Default'),
+				'filter' => ['text'],
+			],
+			[
 				'data' => 'expire_at',
 				'title' => Yii::t('label', 'Expire At'),
 				'filter' => ['date', 'icu:' . Yii::$app->settings->get('dateFormat')],

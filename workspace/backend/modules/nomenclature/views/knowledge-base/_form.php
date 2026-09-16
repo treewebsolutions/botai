@@ -137,6 +137,12 @@ use yii\helpers\Html;
 					]) ?>
 				</div>
 			</div>
+			<div class="row">
+				<div class="col-sm-12">
+					<?= $form->field($model, 'default')->checkbox()
+						->hint(Yii::t('backend', 'Scraped pages are indexed into the default knowledge base. Without one, whichever base is linked to the chat assistant is used, or the oldest active one.')) ?>
+				</div>
+			</div>
 
 		<?php if (Yii::$app->request->isAjax): ?>
 			<div class="modal-footer">

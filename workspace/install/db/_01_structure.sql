@@ -677,6 +677,7 @@ CREATE TABLE IF NOT EXISTS `knowledge_base` (
   `chunk_size` INT(11) NULL DEFAULT 1000,
   `chunk_overlap` INT(11) NULL DEFAULT 200,
   `tokens_per_file` INT(11) NULL DEFAULT 0,
+  `default` TINYINT(1) NOT NULL DEFAULT 0,
   `expire_at` DATETIME NULL DEFAULT NULL,
   `created_by` INT(11) NULL DEFAULT NULL,
   `updated_by` INT(11) NULL DEFAULT NULL,
@@ -687,6 +688,7 @@ CREATE TABLE IF NOT EXISTS `knowledge_base` (
   PRIMARY KEY (`id`),
   INDEX `deleted` (`deleted` ASC),
   INDEX `status` (`status` ASC),
+  INDEX `default` (`default` ASC),
   INDEX `provider` (`provider` ASC))
 ENGINE = InnoDB;
 
