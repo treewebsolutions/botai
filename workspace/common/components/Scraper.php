@@ -90,9 +90,19 @@ class Scraper extends Component
 				}
 
 				foreach ($links as $link) {
-					$normalizedLink = $this->normalizeUrl($link);
-					if (!isset($this->visited[$normalizedLink])) {
-						$this->scrape($normalizedLink, $website, $depth + 1);
+					if (isset($this->visited[$link])) {
+						continue;
+					}
+
+					if ($depth + 1 <= $this->depthLimit) {
+						$this->scrape($link, $website, $depth + 1);
+					} else {
+						// Deeper than this run follows. Remember the address without
+						// fetching it, so the queue picks it up on a later run instead of
+						// it being lost - which is what used to happen at the depth limit,
+						// and what made a refresh unable to notice a page added to a site
+						// since the first crawl.
+						$this->queueLink($link, $website);
 					}
 				}
 			} else {
@@ -218,6 +228,40 @@ class Scraper extends Component
 		}
 
 		return true;
+	}
+
+	/**
+	 * Remembers an address to fetch later, without fetching it now.
+	 *
+	 * The row carries no content, so it is not indexable and shows in the page list as
+	 * having no text until the crawl reaches it. A URL already known is left alone,
+	 * whatever its state: a page someone deleted stays deleted rather than reappearing on
+	 * the next pass.
+	 *
+	 * @param string $url absolute
+	 * @param string|null $website
+	 * @return void
+	 */
+	private function queueLink($url, $website = null)
+	{
+		$url = trim((string) $url);
+		if ($url === '' || Page::find()->where(['url' => $url])->exists()) {
+			return;
+		}
+
+		$page = new Page([
+			'url' => $url,
+			'website' => $website,
+			'content' => '',
+			'text' => '',
+			'characters' => 0,
+			'counter' => 0,
+			'status' => Page::STATUS_INACTIVE,
+		]);
+
+		if (!$page->save()) {
+			Yii::warning(['message' => 'Could not queue a discovered link.', 'url' => $url, 'errors' => $page->getErrors()], __METHOD__);
+		}
 	}
 
 	/**

@@ -70,7 +70,9 @@ class PageForm extends Page
 				throw new \Exception();
 			}
 
-			$scraper = new Scraper(3);
+			// Fetch the address given and remember what it links to; the scheduled runs work
+			// through the queue from there, so adding a site does not block on crawling it.
+			$scraper = new Scraper(0);
 			$scraper->scrape($this->url, $this->website, 0, static::STATUS_ACTIVE);
 
 			$dbTransaction->commit();

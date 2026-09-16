@@ -14,11 +14,6 @@ use yii\console\ExitCode;
 class ScraperController extends Controller
 {
 	/**
-	 * How deep a newly discovered page is followed, so the rest of the site is found.
-	 */
-	const DISCOVERY_DEPTH = 3;
-
-	/**
 	 * Hours a page may go without a fetch before it is due for a refresh, unless
 	 * `scraper.refreshAfterHours` says otherwise.
 	 */
@@ -39,10 +34,11 @@ class ScraperController extends Controller
 
 		$dbTransaction = Yii::$app->db->beginTransaction();
 		try {
-			// A newly discovered page is followed, so its links join the queue. A refresh
-			// fetches that page alone: the crawl already knows the site, and re-walking a
-			// customer's whole website on every scheduled tick is not a refresh.
-			$scraper = new Scraper($isNew ? static::DISCOVERY_DEPTH : 0);
+			// One page per run, whether it is new or being refreshed. Its links are
+			// remembered without being fetched, so the queue spreads through the site by
+			// itself - one request per tick rather than a recursive crawl of the whole
+			// site every time a queued page comes up.
+			$scraper = new Scraper(0);
 			$scraper->scrape($page->url, $page->website, 0, Page::STATUS_ACTIVE);
 			$dbTransaction->commit();
 		} catch (\Exception $e) {
