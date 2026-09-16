@@ -519,6 +519,53 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Whether the tenant database still has to be created and seeded.
+	 *
+	 * True when it does not exist, and also when it exists but holds no tables: a database
+	 * created by hand, or left behind by an install that failed before the first import, is
+	 * as unusable as a missing one and has nothing in it to lose.
+	 *
+	 * A tenant that already has tables answers false, so {@see install()} never imports the
+	 * install structure over live data.
+	 *
+	 * @return bool
+	 */
+	protected function workspaceDatabaseNeedsInstall()
+	{
+		$db = static::getDb();
+		$dbName = $this->getWorkspaceDbName();
+
+		try {
+			$exists = (int) $db->createCommand(
+				'SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = :name',
+				[':name' => $dbName]
+			)->queryScalar() > 0;
+
+			if (!$exists) {
+				return true;
+			}
+
+			return (int) $db->createCommand(
+				'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = :name',
+				[':name' => $dbName]
+			)->queryScalar() === 0;
+		} catch (\Exception $e) {
+			// information_schema is the cheap answer, not the only truth - a shared host can
+			// restrict it. Answer "nothing to do" when it cannot be read: skipping the import
+			// leaves a working tenant alone, while guessing the other way would write the
+			// install structure over a database we were unable to look inside.
+			Yii::warning([
+				'message' => 'Cannot tell whether the workspace database exists; leaving it alone.',
+				'workspace' => $this->code,
+				'database' => $dbName,
+				'error' => $e->getMessage(),
+			], __METHOD__);
+
+			return false;
+		}
+	}
+
+	/**
 	 * Installs the Workspace database.
 	 *
 	 * Import order: the shared `@workspace/install/db/_01_structure.sql`, `_03_common.sql`,
@@ -990,20 +1037,20 @@ class Workspace extends CommonActiveRecord
 					throw new \Exception('Cannot reinstall the workspace.');
 				}
 			}
-			// Baza de date NU se mai atinge la (re)instalare.
+			// The database is touched only when there is nothing to lose.
 			//
-			// installDatabase() importă install/db/_01_structure.sql şi restul peste baza
-			// existentă, ceea ce pe un tenant viu înseamnă structura de instalare peste
-			// date reale. Reinstalarea e folosită ca să refacă directorul şi rutarea, nu
-			// baza — aceea se aduce la zi prin
-			// workspace/_database/2026-09-16-tenant-update.sql.
+			// installDatabase() imports install/db/_01_structure.sql and the rest, which on
+			// a live tenant means the install structure on top of real data - so reinstall
+			// used to skip it entirely. That left the other half broken: a workspace whose
+			// database was never created had no way to get one, and the reinstall button
+			// could not repair it.
 			//
-			// Pentru un workspace NOU, creează baza şi importă seed-ul manual, sau
-			// decomentează temporar.
-			//
-			// if (!$this->installDatabase()) {
-			//     throw new \Exception('Cannot create the workspace database.');
-			// }
+			// Installing only when the database is missing or empty serves both. A tenant
+			// with tables keeps its conversations, messages and assistants untouched and is
+			// brought up to date through workspace/_database/<date>-tenant-update.sql.
+			if ($this->workspaceDatabaseNeedsInstall() && !$this->installDatabase()) {
+				throw new \Exception('Cannot create the workspace database.');
+			}
 			if (!$this->installDirectory()) {
 				throw new \Exception('Cannot create the workspace directory.');
 			}
