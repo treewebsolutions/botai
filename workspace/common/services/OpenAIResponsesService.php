@@ -258,6 +258,12 @@ class OpenAIResponsesService
 
 		$vsId = self::createVectorStore((string)$kb->name);
 		$kb->updateAttributes(['vector_store_id' => $vsId]);
+
+		// The store was created on the platform's OpenAI key, so the hub is told about it.
+		// It is the only record that outlives this tenant: uninstalling a workspace does not
+		// touch OpenAI, and once this database is gone, so is the id above.
+		\common\models\master\WorkspaceVectorStore::record($vsId, (string) $kb->name);
+
 		return $vsId;
 	}
 

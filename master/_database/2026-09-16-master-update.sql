@@ -131,6 +131,36 @@ UPDATE `scheduled_task`
 SET `cron_expression` = CONCAT('*/', SUBSTRING(`cron_expression`, 3))
 WHERE `cron_expression` LIKE '0/%';
 
+
+-- ── PASUL 4: evidenţa vector store-urilor create pe cheia platformei ───────
+--
+-- De când cheia OpenAI e a hub-ului, vector store-urile tuturor tenanţilor stau
+-- într-un singur cont — al platformei. Dezinstalarea unui workspace nu atinge
+-- OpenAI, iar dacă baza tenantului dispare, dispare şi `knowledge_base`.
+-- `vector_store_id`, singura evidenţă că store-ul există. Rămâne pe cont, plătit,
+-- fără ca nimic din sistem să-l mai poată numi.
+--
+-- Tenantul scrie aici când îşi provizionează store-ul. Hub-ul citeşte ca să ştie
+-- ce are pe cont şi ce poate curăţa.
+--
+-- DELIBERAT FĂRĂ CHEIE STRĂINĂ către `workspace`: un ON DELETE CASCADE ar şterge
+-- exact dovada de care e nevoie. `workspace_code` e copiat ca text din acelaşi
+-- motiv — după ştergerea workspace-ului trebuie să se mai poată citi al cui era.
+
+CREATE TABLE IF NOT EXISTS `workspace_vector_store` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `workspace_id` INT(11) NULL DEFAULT NULL COMMENT 'Fara FK: rândul trebuie să supravieţuiască ştergerii workspace-ului.',
+  `workspace_code` VARCHAR(255) NULL DEFAULT NULL,
+  `vector_store_id` VARCHAR(128) NOT NULL,
+  `name` VARCHAR(255) NULL DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  `removed_at` DATETIME NULL DEFAULT NULL COMMENT 'Când a fost şters de la OpenAI.',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `vector_store_id` (`vector_store_id`),
+  KEY `workspace_id` (`workspace_id`),
+  KEY `removed_at` (`removed_at`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ── Verificare înainte de scriptul de tenant ───────────────────────────────
 --
 --   SELECT id, name, type, `default`, status, CHAR_LENGTH(data) AS len
