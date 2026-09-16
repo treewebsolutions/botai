@@ -523,6 +523,22 @@ class Workspace extends CommonActiveRecord
 	}
 
 	/**
+	 * Whether this installation gives each workspace its own cPanel addon domain, rather
+	 * than serving them all as paths under the master host.
+	 *
+	 * Two separate questions used to be answered by one: whether the cPanel API is usable,
+	 * and whether tenants live on their own domains. An installation can want the first
+	 * without the second - let cPanel create the databases, keep routing every tenant by
+	 * path - and reading it as one turned the API on and the paths off together.
+	 *
+	 * @return bool
+	 */
+	public function usesCpanelAddonDomains()
+	{
+		return $this->isCPanelConfigured() && (bool) (Yii::$app->params['workspace.addonDomains'] ?? false);
+	}
+
+	/**
 	 * Whether the tenant database still has to be created and seeded.
 	 *
 	 * True when it does not exist, and also when it exists but holds no tables: a database
@@ -869,10 +885,11 @@ class Workspace extends CommonActiveRecord
 			// Link the shared source/asset directories from the @workspace app into the tenant.
 			FileHelper::symlink($this->getSymlinkMap());
 
-			// On cPanel the workspace is served from its addon domain's document root, so the
-			// app baseUrls lose the "/<url>" path prefix ("" / "/admin"). Locally the workspace
-			// is served as a path under the master domain (root .htaccess) and keeps it.
-			$baseUrlPrefix = $this->isLocalInstallEnvironment() ? '/' . $this->url : '';
+			// A workspace served from its own addon domain sits at that domain's document
+			// root, so the app baseUrls drop the "/<url>" path prefix ("" / "/admin"). One
+			// served as a path under the master host - locally, and on an installation that
+			// routes by path through the root .htaccess - keeps it.
+			$baseUrlPrefix = $this->usesCpanelAddonDomains() ? '' : '/' . $this->url;
 
 			// Update the configuration files
 			foreach ($this->getConfigFilePaths() as $filePath) {
@@ -1163,7 +1180,7 @@ class Workspace extends CommonActiveRecord
 	 */
 	protected function ensureCpanelAddonDomain(): bool
 	{
-		if ($this->isLocalInstallEnvironment()) {
+		if (!$this->usesCpanelAddonDomains()) {
 			return true;
 		}
 

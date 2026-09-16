@@ -85,6 +85,43 @@ class WorkspaceCpanelTest extends TestCase
 	}
 
 	/**
+	 * A usable cPanel API does not mean tenants live on their own domains.
+	 *
+	 * botai.ro serves every workspace as a path (botai.ro/<url>) while letting cPanel
+	 * create the databases, so addon domain creation stays off and the tenant baseUrls
+	 * keep their "/<url>" prefix. Reading both from one flag turned the API on and the
+	 * paths off together.
+	 */
+	public function testCpanelApiDoesNotImplyAddonDomains()
+	{
+		$workspace = new Workspace(['url' => 'tws']);
+
+		Yii::$app->set('cPanel', [
+			'class' => \common\components\CPanel::class,
+			'baseUrl' => 'https://example.test:2083',
+			'username' => 'account',
+			'apiToken' => 'token',
+		]);
+		$previous = Yii::$app->params['workspace.addonDomains'] ?? null;
+
+		try {
+			Yii::$app->params['workspace.addonDomains'] = false;
+			$this->assertTrue($workspace->isCPanelConfigured(), 'the API is usable');
+			$this->assertFalse($workspace->usesCpanelAddonDomains(), 'but tenants are routed by path');
+			$this->assertTrue(
+				$this->callProtected($workspace, 'ensureCpanelAddonDomain'),
+				'a no-op, and not an error for a workspace with no domain'
+			);
+
+			Yii::$app->params['workspace.addonDomains'] = true;
+			$this->assertTrue($workspace->usesCpanelAddonDomains());
+		} finally {
+			Yii::$app->params['workspace.addonDomains'] = $previous;
+			Yii::$app->clear('cPanel');
+		}
+	}
+
+	/**
 	 * The placeholders of an environment file that was never filled in are not
 	 * credentials: the component refuses to initialise on them, and the installer has to
 	 * read that as "install locally" rather than as an error.
