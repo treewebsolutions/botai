@@ -57,7 +57,8 @@ use yii\helpers\Url;
                         <?= $form->field($model, 'phone')->input('tel') ?>
                     </div>
                     <div class="col-md-4">
-                        <?= $form->field($model, 'password')->passwordInput(['autocomplete' => 'new-password']) ?>
+                        <?php $secretFieldTemplate = '{label}<div class="input-secret">{input}<span class="toggle-secret fa fa-eye-slash"></span></div>{hint}{error}'; ?>
+                        <?= $form->field($model, 'password', ['template' => $secretFieldTemplate])->passwordInput(['autocomplete' => 'new-password']) ?>
                     </div>
                 </div>
             </div>

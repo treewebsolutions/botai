@@ -1447,4 +1447,16 @@
 $(document).ready(function () {
 	autoFillApp.init();
 	mainApp.init();
+
+	$(document).on('click', '.toggle-secret', function () {
+		var input = $(this).siblings('input, textarea');
+		var isHidden = input.is('input') ? input.attr('type') === 'password' : input.hasClass('secret-hidden');
+		if (isHidden) {
+			input.is('input') ? input.attr('type', 'text') : input.removeClass('secret-hidden');
+			$(this).removeClass('fa-eye-slash').addClass('fa-eye');
+		} else {
+			input.is('input') ? input.attr('type', 'password') : input.addClass('secret-hidden');
+			$(this).removeClass('fa-eye').addClass('fa-eye-slash');
+		}
+	});
 });
