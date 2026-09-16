@@ -196,9 +196,43 @@
 		 * Binds a message listener to handle iframe resize events.
 		 * @private
 		 */
+		/**
+		 * The origin the widget iframe is served from, derived from the embed script's own
+		 * src, or null when it cannot be determined - in which case no message is trusted.
+		 *
+		 * @returns {string|null}
+		 * @private
+		 */
+		_widgetOrigin: function () {
+			try {
+				return new URL(this.baseUrl, window.location.href).origin;
+			} catch (e) {
+				return null;
+			}
+		},
+
 		_bindMessageListener: function () {
 			var self = this;
+			var widgetOrigin = self._widgetOrigin();
+
 			window.addEventListener("message", function (event) {
+				// Only the widget's own iframe may drive this listener. The handlers below
+				// take the storage key from the message itself, so without this check any
+				// frame on the customer's page - another embed, an ad, an extension - could
+				// ask for a stored conversation and be answered, or write over one.
+				//
+				// Both halves matter: the origin says the message comes from where the
+				// widget is served, and the source says it comes from this widget rather
+				// than from a second frame that happens to share that origin.
+				var iframe = document.getElementById(self.namespace + '-iframe');
+				if (widgetOrigin === null
+					|| event.origin !== widgetOrigin
+					|| !iframe
+					|| event.source !== iframe.contentWindow
+				) {
+					return;
+				}
+
 				var message = event.data;
 				const key = 'conversation_' + (message.sessionId || 'default');
 
