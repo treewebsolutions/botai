@@ -29,6 +29,12 @@ return [
 
 	'schedule.enabled' => false,
 
+	// Hours a scraped page may go without a fetch before the scraper refreshes it. The
+	// crawler takes one page per run, newly discovered ones first, so this is what keeps
+	// a site's content from freezing at whenever it was first crawled. 0 disables
+	// refreshing and leaves only discovery.
+	'scraper.refreshAfterHours' => 24,
+
 	'user.loginDuration' => 60 * 60 * 3600,
 	'user.loginTokenExpiration' => 60 * 60 * 3600,
 	'user.passwordResetTokenExpiration' => 60 * 60 * 3600,
