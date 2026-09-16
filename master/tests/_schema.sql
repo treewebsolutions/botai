@@ -2425,6 +2425,20 @@ CREATE TABLE `workspace` (
 -- Table structure for table `workspace_has_subscription_feature`
 --
 
+CREATE TABLE `workspace_vector_store` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `workspace_id` INT(11) NULL DEFAULT NULL COMMENT 'Fara FK: rândul trebuie să supravieţuiască ştergerii workspace-ului.',
+  `workspace_code` VARCHAR(255) NULL DEFAULT NULL,
+  `vector_store_id` VARCHAR(128) NOT NULL,
+  `name` VARCHAR(255) NULL DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  `removed_at` DATETIME NULL DEFAULT NULL COMMENT 'Când a fost şters de la OpenAI.',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `vector_store_id` (`vector_store_id`),
+  KEY `workspace_id` (`workspace_id`),
+  KEY `removed_at` (`removed_at`)
+) ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `workspace_database_update_log` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `workspace_id` INT(11) NOT NULL,
