@@ -965,9 +965,20 @@ class Workspace extends CommonActiveRecord
 					throw new \Exception('Cannot reinstall the workspace.');
 				}
 			}
-			if (!$this->installDatabase()) {
-				throw new \Exception('Cannot create the workspace database.');
-			}
+			// Baza de date NU se mai atinge la (re)instalare.
+			//
+			// installDatabase() importă install/db/_01_structure.sql şi restul peste baza
+			// existentă, ceea ce pe un tenant viu înseamnă structura de instalare peste
+			// date reale. Reinstalarea e folosită ca să refacă directorul şi rutarea, nu
+			// baza — aceea se aduce la zi prin
+			// workspace/_database/2026-09-16-tenant-update.sql.
+			//
+			// Pentru un workspace NOU, creează baza şi importă seed-ul manual, sau
+			// decomentează temporar.
+			//
+			// if (!$this->installDatabase()) {
+			//     throw new \Exception('Cannot create the workspace database.');
+			// }
 			if (!$this->installDirectory()) {
 				throw new \Exception('Cannot create the workspace directory.');
 			}
@@ -996,12 +1007,19 @@ class Workspace extends CommonActiveRecord
 	public function uninstall()
 	{
 		try {
-			if ($this->isLocalInstallEnvironment()) {
-				static::getDb()->createCommand("DROP DATABASE IF EXISTS `{$this->getWorkspaceDbName()}`")->execute();
-			} else {
-				$response = Yii::$app->cPanel->uapi->Mysql->delete_database(['name' => $this->getWorkspaceDbName()]);
-				$this->logCpanelUapiFailure('Mysql::delete_database', $response);
-			}
+			// Baza de date NU se mai şterge.
+			//
+			// install($reinstall = true) trece prin aici, deci butonul de reinstall din
+			// interfaţă arunca baza tenantului cu tot cu conversaţii, mesaje şi asistenţi
+			// — fără confirmare şi fără cale de întoarcere. Dezinstalarea lasă acum baza
+			// pe loc; ştergerea ei e o decizie separată, făcută manual.
+			//
+			// if ($this->isLocalInstallEnvironment()) {
+			//     static::getDb()->createCommand("DROP DATABASE IF EXISTS `{$this->getWorkspaceDbName()}`")->execute();
+			// } else {
+			//     $response = Yii::$app->cPanel->uapi->Mysql->delete_database(['name' => $this->getWorkspaceDbName()]);
+			//     $this->logCpanelUapiFailure('Mysql::delete_database', $response);
+			// }
 
 			if (!$this->updateCrontab(true)) {
 				throw new \Exception('Cannot update the crontab file.');
