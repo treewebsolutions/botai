@@ -187,10 +187,7 @@ class SubscriptionForm extends Subscription
 				$this->trial_period = $this->package->trial_period;
 				$this->trial_cycle = $this->package->trial_cycle;
 				$this->currency = $this->package->currency;
-				$this->price = $this->package->price * $this->billing_period;
-				if ($this->billing_cycle == ScheduledTask::CYCLE_YEAR) {
-					$this->price *= 12;
-				}
+				$this->price = $this->getScaledPackagePrice();
 			}
 			if (!$this->save(true, parent::attributes())) {
 				throw new \Exception();
@@ -204,5 +201,51 @@ class SubscriptionForm extends Subscription
 			$dbTransaction->rollBack();
 			return false;
 		}
+	}
+
+	/**
+	 * The package price scaled to the billing cycle chosen for this subscription.
+	 *
+	 * A package price covers one of the package's own billing cycles: a package billed
+	 * yearly at 900 costs 900 a year, not 900 a month. The price is therefore scaled by
+	 * how many of the package's own cycles the chosen billing period covers - picking
+	 * "1 year" on that package keeps the 900 instead of charging it twelve times over.
+	 *
+	 * @return float
+	 */
+	protected function getScaledPackagePrice()
+	{
+		$packageMonths = static::getBillingMonths($this->package->billing_period, $this->package->billing_cycle);
+
+		if ($packageMonths <= 0) {
+			return (float) $this->package->price;
+		}
+
+		return (float) $this->package->price
+			* static::getBillingMonths($this->billing_period, $this->billing_cycle)
+			/ $packageMonths;
+	}
+
+	/**
+	 * The length of a billing period in months.
+	 *
+	 * Days and weeks are only ever a fraction of a month here; the same approximation is
+	 * used on both sides of the ratio, so a package and a subscription on the same cycle
+	 * always come out at the package's own price.
+	 *
+	 * @param int $period
+	 * @param string $cycle
+	 * @return float
+	 */
+	protected static function getBillingMonths($period, $cycle)
+	{
+		$months = [
+			ScheduledTask::CYCLE_DAY => 1 / 30,
+			ScheduledTask::CYCLE_WEEK => 7 / 30,
+			ScheduledTask::CYCLE_MONTH => 1,
+			ScheduledTask::CYCLE_YEAR => 12,
+		];
+
+		return (float) $period * ($months[$cycle] ?? 1);
 	}
 }
