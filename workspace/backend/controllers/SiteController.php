@@ -251,33 +251,6 @@ class SiteController extends MainController
 	 */
 	public function actionSearch()
 	{
-		$dataset = [];
-		if ($criteria = Yii::$app->request->post('contractor', null)) {
-			if ($contractor = \common\models\master\Contractor::findByAttributes(['email' => $criteria])) {
-				$attributes = $contractor->attributes;
-				$dataset[] = [
-					'email' => $attributes['email'],
-					'name' => $attributes['name'],
-					'first_name' => $attributes['first_name'],
-					'middle_name' => $attributes['middle_name'],
-					'last_name' => $attributes['last_name'],
-					'phone' => $attributes['phone'],
-					'fax' => $attributes['fax'],
-					'url' => $attributes['url'],
-					'country' => $attributes['country'],
-					'county' => $attributes['county'],
-					'locality' => $attributes['locality'],
-					'zip_code' => $attributes['zip_code'],
-					'address' => $attributes['address'],
-					'latitude' => $attributes['latitude'],
-					'longitude' => $attributes['longitude'],
-				];
-			}
-			return $this->asJson([
-				'results' => $dataset,
-			]);
-		}
-
 		$searchModel = new SearchForm();
 		$searchModel->load(Yii::$app->request->get());
 
