@@ -432,7 +432,6 @@ class Contractor extends CommonActiveRecord
 						$contractor = $query->createCommand($workspaceDb)->queryOne();
 						$attributes = $model->attributes;
 						unset($attributes['user_id']);
-						unset($attributes['working_point_id']);
 						unset($attributes['workspace_id']);
 						unset($attributes['created_by']);
 						unset($attributes['created_at']);
