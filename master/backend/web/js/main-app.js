@@ -2025,3 +2025,60 @@ $(document).ready(function () {
 		}
 	});
 });
+
+/**
+ * Client-side trim filter
+ *
+ * Yii's "trim" filter writes the trimmed value straight back into the field it validates
+ * (yii.validation.trim). Every form here validates on type, so the space typed after a word
+ * is taken out again before the next word is typed and the two words run together.
+ *
+ * While the field has the focus - the visitor is still typing - validate against the trimmed
+ * value but leave what was typed alone. The filter trims the field as usual once it loses the
+ * focus or the form is submitted, and the same rule trims on the server in any case.
+ */
+(function ($, window) {
+	$(document).ready(function () {
+		if (!window.yii || !window.yii.validation || typeof window.yii.validation.trim !== 'function') {
+			return;
+		}
+
+		var trim = window.yii.validation.trim;
+
+		window.yii.validation.trim = function ($form, attribute) {
+			var $input = $form.find(attribute.input),
+				input = $input[0],
+				data = $form.data('yiiActiveForm'),
+				typed, selectionStart, selectionEnd, value;
+
+			if (!input || !$input.is(':focus') || (data && data.submitting)) {
+				return trim.apply(this, arguments);
+			}
+
+			typed = $input.val();
+
+			try {
+				selectionStart = input.selectionStart;
+				selectionEnd = input.selectionEnd;
+			} catch (e) {
+				// Fields such as type="number" have no selection to put back.
+			}
+
+			value = trim.apply(this, arguments);
+
+			if ($input.val() !== typed) {
+				$input.val(typed);
+
+				if (typeof selectionStart === 'number') {
+					try {
+						input.setSelectionRange(selectionStart, selectionEnd);
+					} catch (e) {
+						// Same fields again: nothing to put back.
+					}
+				}
+			}
+
+			return value;
+		};
+	});
+})(jQuery, window);
