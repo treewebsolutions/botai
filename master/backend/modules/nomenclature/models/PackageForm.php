@@ -153,7 +153,11 @@ class PackageForm extends Package
     protected function savePackageTranslations()
     {
         try {
-            $languages = ArrayHelper::getColumn(Yii::$app->translate->discover()['data']['languages'], 'language');
+            // Only the auto-translator needs Google's language list, and asking for it
+            // without a key throws - which used to take the whole save down with it.
+            $languages = !empty($this->translator)
+                ? ArrayHelper::getColumn(Yii::$app->translate->discover()['data']['languages'], 'language')
+                : [];
             $defaultLanguage = Language::findOne(['language_id' => Yii::$app->language]);
 
             foreach (Language::findAllLanguages() as $language) {
@@ -288,7 +292,10 @@ class PackageForm extends Package
 				}
 			}
 			return $product;
-		} catch(\Exception $e) {
+		} catch(\Throwable $e) {
+			// The package is saved either way - see saveModel() - but the reason Stripe
+			// refused belongs in the log rather than nowhere.
+			Yii::error($e, __METHOD__);
 			return [];
 		}
 	}
@@ -321,20 +328,31 @@ class PackageForm extends Package
 			if (!$this->savePackageFeatures()) {
 				throw new \Exception();
 			}
-			if (array_key_exists(\common\models\PaymentMetadata::PAYMENT_METHOD_CARD, (array) $paymentSettings['paymentMethods'])) {
-				$activePaymentProcessors = (array) $paymentSettings['paymentProcessors'][\common\models\PaymentMetadata::PAYMENT_METHOD_CARD];
+			$paymentMethods = (array) ($paymentSettings['paymentMethods'] ?? []);
+			if (array_key_exists(\common\models\PaymentMetadata::PAYMENT_METHOD_CARD, $paymentMethods)) {
+				$activePaymentProcessors = (array) ($paymentSettings['paymentProcessors'][\common\models\PaymentMetadata::PAYMENT_METHOD_CARD] ?? []);
 				if (array_key_exists(\common\models\PaymentMetadata::PAYMENT_PROCESSOR_STRIPE, $activePaymentProcessors)) {
 					$product = $this->saveStripeProduct($isNewRecord);
-					$this->external_id = $product['id'] ?: null;
-					if (!$this->save(false, ['external_id'])) {
-						throw new \Exception();
+
+					// Stripe being unreachable or misconfigured must not cost the package its
+					// own save: saveStripeProduct() answers with an empty array, and reading
+					// ['id'] off it threw, rolled everything back and left an error on screen.
+					// An id we did not get is also no reason to forget the one already stored.
+					if (!empty($product['id']) && $product['id'] !== $this->external_id) {
+						$this->external_id = $product['id'];
+						if (!$this->save(false, ['external_id'])) {
+							throw new \Exception();
+						}
 					}
 				}
 			}
 			$dbTransaction->commit();
 			return $this;
-		} catch(\Exception $e) {
+		} catch(\Throwable $e) {
 			$dbTransaction->rollBack();
+			// The screen only ever said the package could not be saved; the reason used to
+			// go nowhere.
+			Yii::error($e, __METHOD__);
 			return false;
 		}
 	}

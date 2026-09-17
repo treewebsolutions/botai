@@ -206,8 +206,11 @@ class SubscriptionForm extends Subscription
 			}
 			$dbTransaction->commit();
 			return true;
-		} catch(\Exception $e) {
+		} catch(\Throwable $e) {
 			$dbTransaction->rollBack();
+			// Without this the screen only ever said the subscription could not be saved,
+			// and the reason - a TypeError, a failed feature insert - was lost.
+			Yii::error($e, __METHOD__);
 			return false;
 		}
 	}

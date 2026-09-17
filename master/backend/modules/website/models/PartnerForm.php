@@ -131,7 +131,11 @@ class PartnerForm extends Partner
     protected function savePartnerTranslations()
     {
         try {
-            $languages = ArrayHelper::getColumn(Yii::$app->translate->discover()['data']['languages'], 'language');
+            // Only the auto-translator needs Google's language list, and asking for it
+            // without a key throws - which used to take the whole save down with it.
+            $languages = !empty($this->translator)
+                ? ArrayHelper::getColumn(Yii::$app->translate->discover()['data']['languages'], 'language')
+                : [];
             $defaultLanguage = Language::findOne(['language_id' => Yii::$app->language]);
 
             foreach (Language::findAllLanguages() as $language) {
