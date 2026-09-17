@@ -236,7 +236,7 @@ Yii::$app->formatter->locale = Yii::$app->language;
 						<div class="card card-pricing bg-white">
 							<header class="card-header">
 								<h4 class="card-heading"><?= $packageTranslation->name ?></h4>
-								<div class="card-jumbotron color-default"><?= Yii::$app->formatter->asCurrency($package->price) ?></div>
+								<div class="card-jumbotron color-default"><?= Yii::$app->formatter->asCurrency($package->price) ?> <small><?= $package->getFormattedPricePeriod() ?></small></div>
 							</header>
 							<div class="list-icon list-spacing equal-package">
 								<?php if (!empty($packageTranslation->content)): ?>

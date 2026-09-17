@@ -83,7 +83,7 @@ Yii::$app->formatter->locale = Yii::$app->language;
 								<div class="card card-pricing card-hover bg-white <?= $package->id == $model->package_id ? 'active' : '' ?>" data-package="<?= $package->id ?>">
 									<header class="card-header">
 										<h3 class="card-heading text-uppercase"><?= $packageTranslation->name ?></h3>
-										<div class="card-jumbotron color-default" data-package-price="<?= Yii::$app->formatter->asCurrency($package->price, $package->currency) ?>"><?= Yii::$app->formatter->asCurrency($package->price, $package->currency) ?></div>
+										<div class="card-jumbotron color-default" data-package-price="<?= Yii::$app->formatter->asCurrency($package->price, $package->currency) ?>"><?= Yii::$app->formatter->asCurrency($package->price, $package->currency) ?> <small><?= $package->getFormattedPricePeriod() ?></small></div>
 									</header>
 									<div class="list-icon list-spacing">
 										<?php if (!empty($packageTranslation->content)): ?>

@@ -76,7 +76,7 @@ use yii\helpers\Html;
 									<?php if ($package->type == Package::TYPE_STANDARD): ?>
 										<header class="card-header">
 											<h3 class="card-heading text-uppercase"><?= $packageTranslation->name ?></h3>
-											<div class="card-jumbotron color-default"><?= Yii::$app->formatter->asCurrency($package->price, $package->currency) ?></div>
+											<div class="card-jumbotron color-default"><?= Yii::$app->formatter->asCurrency($package->price, $package->currency) ?> <small><?= $package->getFormattedPricePeriod() ?></small></div>
 										</header>
 										<div class="list-icon list-spacing equal-package">
 											<?php if (!empty($packageTranslation->content)): ?>

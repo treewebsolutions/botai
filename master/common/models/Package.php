@@ -244,6 +244,45 @@ class Package extends CommonActiveRecord
 	}
 
 	/**
+	 * The billing period written as a price suffix - "/ year", or "/ 3 months" when the
+	 * package is billed several cycles at a time. Empty for a package with no billing of
+	 * its own, so a free one shows its price alone.
+	 *
+	 * The cycle labels of getCycleLabels() are column headings - "Anul", "Luna" - and read
+	 * wrong after a slash, so the suffix has plain nouns of its own.
+	 *
+	 * @return string
+	 */
+	public function getFormattedPricePeriod()
+	{
+		if (!$this->billing_period || !$this->billing_cycle) {
+			return '';
+		}
+
+		$labels = $this->billing_period > 1
+			? [
+				ScheduledTask::CYCLE_DAY => Yii::t('common', 'days'),
+				ScheduledTask::CYCLE_WEEK => Yii::t('common', 'weeks'),
+				ScheduledTask::CYCLE_MONTH => Yii::t('common', 'months'),
+				ScheduledTask::CYCLE_YEAR => Yii::t('common', 'years'),
+			]
+			: [
+				ScheduledTask::CYCLE_DAY => Yii::t('common', 'day'),
+				ScheduledTask::CYCLE_WEEK => Yii::t('common', 'week'),
+				ScheduledTask::CYCLE_MONTH => Yii::t('common', 'month'),
+				ScheduledTask::CYCLE_YEAR => Yii::t('common', 'year'),
+			];
+
+		if (!isset($labels[$this->billing_cycle])) {
+			return '';
+		}
+
+		$period = $this->billing_period > 1 ? $this->billing_period . ' ' : '';
+
+		return '/ ' . $period . $labels[$this->billing_cycle];
+	}
+
+	/**
 	 * Model type labels.
 	 *
 	 * @return array
