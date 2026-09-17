@@ -83,12 +83,12 @@ class Module extends \yii\base\Module implements \yii\base\BootstrapInterface
 					'label' => Yii::t('label', 'Pages'),
 					'url' => ['/nomenclature-manager/page/index'],
 				],
-//				[
-//					'roles' => ['viewIntegration'],
-//					'icon' => 'fa fa-circle-o',
-//					'label' => Yii::t('label', 'Integrations'),
-//					'url' => ['/nomenclature-manager/integration/index'],
-//				],
+				[
+					'roles' => ['viewIntegration'],
+					'icon' => 'fa fa-circle-o',
+					'label' => Yii::t('label', 'Integrations'),
+					'url' => ['/nomenclature-manager/integration/index'],
+				],
 				[
 					'roles' => ['viewKnowledgeBase'],
 					'icon' => 'fa fa-circle-o',
