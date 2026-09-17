@@ -761,7 +761,8 @@ INSERT INTO `language_source` (`id`, `category`, `message`) VALUES
 (983, 'common', 'The document has been queued for indexing.'),
 (984, 'common', 'The knowledge base is not an OpenAI knowledge base.'),
 (985, 'common', 'The file could not be uploaded.'),
-(986, 'common', 'Optional; the file name is used when left empty.');
+(986, 'common', 'Optional; the file name is used when left empty.'),
+(987, 'backend', 'The assistants are running on the platform OpenAI key. Add an integration of your own to use your account instead.');
 
 --
 -- Dumping data for table `language_translate`
@@ -1523,6 +1524,7 @@ INSERT INTO `language_translate` (`id`, `language`, `translation`) VALUES
 (983, 'ro-RO', 'Documentul a fost pus în coada de indexare.'),
 (984, 'ro-RO', 'Baza de cunoștințe nu este o bază de cunoștințe OpenAI.'),
 (985, 'ro-RO', 'Fișierul nu a putut fi încărcat.'),
-(986, 'ro-RO', 'Opțional; dacă rămâne gol se folosește numele fișierului.');
+(986, 'ro-RO', 'Opțional; dacă rămâne gol se folosește numele fișierului.'),
+(987, 'ro-RO', 'Asistenții folosesc cheia OpenAI a platformei. Adăugați o integrare proprie pentru a folosi contul dumneavoastră.');
 
 SET FOREIGN_KEY_CHECKS=1;
