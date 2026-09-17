@@ -120,10 +120,15 @@ class SubscriptionForm extends Subscription
 					];
 				}
 
-				SubscriptionFeature::getDb()
-					->createCommand()
-					->batchInsert(SubscriptionFeature::tableName(), array_keys($subscriptionFeatures[0]), $subscriptionFeatures)
-					->execute();
+				// A package can have no features of its own. batchInsert() was handed the keys
+				// of $subscriptionFeatures[0] regardless, which on an empty set is a TypeError
+				// that saveModel() caught and reported as a plain "cannot be saved".
+				if ($subscriptionFeatures) {
+					SubscriptionFeature::getDb()
+						->createCommand()
+						->batchInsert(SubscriptionFeature::tableName(), array_keys($subscriptionFeatures[0]), $subscriptionFeatures)
+						->execute();
+				}
 			} else {
 				$availableSubscriptionFeatures = Feature::getFeatureLabels();
 				$existingSubscriptionFeatures = $this->getSubscriptionFeatures()->indexBy('name')->all();
@@ -142,6 +147,10 @@ class SubscriptionForm extends Subscription
 					$features = Feature::findAllFeatures();
 
 					foreach ($newSubscriptionFeatures as $newSubscriptionFeature) {
+						// The feature has to exist as a nomenclature record to be attached.
+						if (!isset($features[$newSubscriptionFeature])) {
+							continue;
+						}
 						$subscriptionFeature = new SubscriptionFeature();
 						$subscriptionFeature->subscription_id = $this->id;
 						$subscriptionFeature->feature_id = $features[$newSubscriptionFeature]->id;

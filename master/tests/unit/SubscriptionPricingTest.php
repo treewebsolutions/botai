@@ -86,4 +86,36 @@ class SubscriptionPricingTest extends DatabaseTestCase
 	{
 		$this->assertSame(100.0, $this->priceFor(300, 3, ScheduledTask::CYCLE_MONTH, 1, ScheduledTask::CYCLE_MONTH));
 	}
+
+	/**
+	 * A standard package with no features of its own still saves. The feature copy used
+	 * to hand batchInsert() the keys of $subscriptionFeatures[0] on an empty array, and
+	 * saveModel() turned the resulting error into a silent false.
+	 */
+	public function testSubscriptionSavesForAPackageWithoutFeatures()
+	{
+		$packageId = $this->insertRow('package', [
+			'type' => Package::TYPE_STANDARD,
+			'price' => 900,
+			'currency' => 'RON',
+			'trial_period' => 1,
+			'trial_cycle' => ScheduledTask::CYCLE_YEAR,
+			'billing_period' => 1,
+			'billing_cycle' => ScheduledTask::CYCLE_YEAR,
+			'status' => Package::STATUS_ACTIVE,
+		]);
+		$subscriberId = $this->insertRow('subscriber', [
+			'status' => 1,
+		]);
+
+		$subscription = new SubscriptionForm();
+		$subscription->subscriber_id = $subscriberId;
+		$subscription->package_id = $packageId;
+		$subscription->billing_period = 1;
+		$subscription->billing_cycle = ScheduledTask::CYCLE_YEAR;
+		$subscription->status = SubscriptionForm::STATUS_ACTIVE;
+
+		$this->assertTrue($subscription->saveModel(), 'The subscription was not saved.');
+		$this->assertSame(900.0, (float) $subscription->price);
+	}
 }
