@@ -195,7 +195,6 @@ use yii\helpers\Url;
                                             <?php endif; ?>
                                             <li class="fa-check-circle"><?= Yii::t('common', 'Billed') ?>: <?= $package->getFormattedBillingCycle() ?></li>
                                             <li class="fa-check-circle"><?= $featureLabels[Feature::WORKSPACES] ?>: <?= $packageFeatures[Feature::WORKSPACES]->value ?: 0 ?></li>
-                                            <li class="fa-check-circle"><?= $featureLabels[Feature::WORKING_POINTS] ?>: <?= $packageFeatures[Feature::WORKING_POINTS]->value ?: 0 ?></li>
                                             <li class="fa-check-circle"><?= $featureLabels[Feature::USERS] ?>: <?= $packageFeatures[Feature::USERS]->value ?: 0 ?></li>
                                         </ul>
                                     <?php elseif ($package->type == Package::TYPE_CUSTOM): ?>
@@ -209,7 +208,6 @@ use yii\helpers\Url;
                                             <?php endif; ?>
                                             <li class="fa-check-circle"><?= Yii::t('common', 'Billed') ?>: <?= Yii::t('common', 'Custom') ?></li>
                                             <li class="fa-check-circle"><?= $featureLabels[Feature::WORKSPACES] ?>: <?= Yii::t('common', 'Custom') ?></li>
-                                            <li class="fa-check-circle"><?= $featureLabels[Feature::WORKING_POINTS] ?>: <?= Yii::t('common', 'Custom') ?></li>
                                             <li class="fa-check-circle"><?= $featureLabels[Feature::USERS] ?>: <?= Yii::t('common', 'Custom') ?></li>
                                         </ul>
                                     <?php endif; ?>

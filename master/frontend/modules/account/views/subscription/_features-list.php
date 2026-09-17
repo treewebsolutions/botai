@@ -31,10 +31,6 @@ $featureLabels = Feature::getFeatureLabels();
 							<td><?= $subscriptionFeatures[Feature::WORKSPACES]->value ?: 0 ?><?= $subscriptionFeatures[Feature::WORKSPACES]->price > 0? ' x ' . Yii::$app->formatter->asCurrency($subscriptionFeatures[Feature::WORKSPACES]->price, $subscriptionFeatures[Feature::WORKSPACES]->currency) : '' ?></td>
 						</tr>
 						<tr>
-							<td class="col-autowidth"><?= $featureLabels[Feature::WORKING_POINTS] ?></td>
-							<td><?= $subscriptionFeatures[Feature::WORKING_POINTS]->value ?: 0 ?><?= $subscriptionFeatures[Feature::WORKING_POINTS]->price > 0 ? ' x ' . Yii::$app->formatter->asCurrency($subscriptionFeatures[Feature::WORKING_POINTS]->price, $subscriptionFeatures[Feature::WORKING_POINTS]->currency) : '' ?></td>
-						</tr>
-						<tr>
 							<td class="col-autowidth"><?= $featureLabels[Feature::USERS] ?></td>
 							<td><?= $subscriptionFeatures[Feature::USERS]->value ?: 0 ?><?= $subscriptionFeatures[Feature::USERS]->price > 0 ? ' x ' . Yii::$app->formatter->asCurrency($subscriptionFeatures[Feature::USERS]->price, $subscriptionFeatures[Feature::USERS]->currency) : '' ?></td>
 						</tr>

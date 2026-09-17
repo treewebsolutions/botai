@@ -98,29 +98,6 @@ Yii::$app->formatter->locale = Yii::$app->language;
 									])->label($feature->getFormattedName()) ?>
 								</div>
 								<div class="col-sm-6">
-									<?php $feature = $features[Feature::WORKING_POINTS]; ?>
-									<?= $form->field($model, "features[{$feature->name}]")->widget(TouchSpin::class, [
-										'options' => [
-											'placeholder' => '0',
-											'data' => [
-												'feature-price' => $feature->price,
-											],
-										],
-										'pluginOptions' => [
-											'min' => 0,
-											'max' => PHP_INT_MAX,
-											'step' => 1,
-											'decimals' => 0,
-											'boostat' => 5,
-											'maxboostedstep' => 10,
-											'verticalbuttons' => true,
-											'postfix' => '&times; ' . Yii::$app->formatter->asCurrency($feature->price, $parentSubscription->currency),
-										],
-									])->label($feature->getFormattedName()) ?>
-								</div>
-							</div>
-							<div class="row">
-								<div class="col-sm-6">
 									<?php $feature = $features[Feature::USERS]; ?>
 									<?= $form->field($model, "features[{$feature->name}]")->widget(TouchSpin::class, [
 										'options' => [

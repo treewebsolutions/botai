@@ -43,19 +43,6 @@ use yii\helpers\Html;
 					]) ?>
 				</div>
 				<div class="col-sm-6 col-lg-3">
-					<?= $form->field($model, Feature::WORKING_POINTS)->widget(TouchSpin::class, [
-						'pluginOptions' => [
-							'min' => 1,
-							'max' => PHP_INT_MAX,
-							'step' => 1,
-							'decimals' => 0,
-							'boostat' => 5,
-							'maxboostedstep' => 10,
-							'verticalbuttons' => true,
-						],
-					]) ?>
-				</div>
-				<div class="col-sm-6 col-lg-3">
 					<?= $form->field($model, Feature::USERS)->widget(TouchSpin::class, [
 						'pluginOptions' => [
 							'min' => 1,

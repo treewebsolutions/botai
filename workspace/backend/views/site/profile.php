@@ -133,11 +133,6 @@ $this->params['breadcrumbs'][] = $this->title;
 			<div class="col-sm-6">
 				<?= $form->field($model, 'role')->textInput(['disabled' => true]) ?>
 			</div>
-            <?php if (Yii::$app->user->identity->workspace->subscription): ?>
-                <div class="col-sm-6">
-                    <?= $form->field($model, 'working_point')->textInput(['disabled' => true]) ?>
-                </div>
-            <?php endif; ?>
 		</div>
 	</fieldset>
 

@@ -44,7 +44,6 @@ class Feature extends CommonActiveRecord
 	const TYPE_BOOLEAN = 1;
 
 	const WORKSPACES = 'workspaces';
-	const WORKING_POINTS = 'working_points';
 	const USERS = 'users';
 
 	/**
@@ -212,7 +211,6 @@ class Feature extends CommonActiveRecord
 	{
 		$general = [
 			self::WORKSPACES => Yii::t('label', 'Workspaces'),
-			self::WORKING_POINTS => Yii::t('label', 'Working Points'),
 			self::USERS => Yii::t('label', 'Users'),
 		];
 

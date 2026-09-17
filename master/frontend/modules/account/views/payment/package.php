@@ -131,7 +131,6 @@ Yii::$app->formatter->locale = Yii::$app->language;
 									<ul class="list-icon list-spacing equal-package">
 										<li class="fa-check-circle"><?= Yii::t('common', 'Billed') ?>: <?= Yii::t('common', 'Custom') ?></li>
 										<li class="fa-check-circle"><?= $featureLabels[Feature::WORKSPACES] ?>: <?= Yii::t('common', 'Custom') ?></li>
-										<li class="fa-check-circle"><?= $featureLabels[Feature::WORKING_POINTS] ?>: <?= Yii::t('common', 'Custom') ?></li>
 										<li class="fa-check-circle"><?= $featureLabels[Feature::USERS] ?>: <?= Yii::t('common', 'Custom') ?></li>
 									</ul>
 									<footer class="card-footer">

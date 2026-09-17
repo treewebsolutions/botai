@@ -50,7 +50,6 @@ class PackageForm extends Package
 
 		// Package features
 		$this->{Feature::WORKSPACES} = 1;
-		$this->{Feature::WORKING_POINTS} = 1;
 		$this->{Feature::USERS} = 1;
 	}
 
@@ -96,7 +95,6 @@ class PackageForm extends Package
 			// Package features
 			[[
 				Feature::WORKSPACES,
-				Feature::WORKING_POINTS,
 				Feature::USERS,
 			], 'required'],
 			[[

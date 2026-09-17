@@ -21,10 +21,6 @@ $featureLabels = Feature::getFeatureLabels();
 		<td><?= $packageFeatures[Feature::WORKSPACES]->value ?: 0 ?></td>
 	</tr>
 	<tr>
-		<td class="col-autowidth"><?= $featureLabels[Feature::WORKING_POINTS] ?></td>
-		<td><?= $packageFeatures[Feature::WORKING_POINTS]->value ?: 0 ?></td>
-	</tr>
-	<tr>
 		<td class="col-autowidth"><?= $featureLabels[Feature::USERS] ?></td>
 		<td><?= $packageFeatures[Feature::USERS]->value ?: 0 ?></td>
 	</tr>

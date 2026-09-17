@@ -2,7 +2,6 @@
 
 namespace common\components;
 
-use common\models\Feature;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\base\Component;
@@ -35,11 +34,6 @@ class SubscriberBootstrap extends Component implements BootstrapInterface
 			// Do something here
 		});
 
-		// Workspace events
-		$app->on('workspace.afterReinstall', function ($event) {
-			$this->updateWorkspaceSubscriptionFeatureQuota($event->sender, -1);
-		});
-
 		// Subscription events
 		$app->on('subscription.afterSuspend', function ($event) {
 			$this->createNotificationForSuspendedSubscription($event->sender);
@@ -47,26 +41,6 @@ class SubscriberBootstrap extends Component implements BootstrapInterface
 		$app->on('subscription.afterPayment', function ($event) {
 			$this->renewSubscriptionFeaturesQuota($event->sender);
 		});
-	}
-
-	/**
-	 * Updates subscription feature quota for a workspace.
-	 *
-	 * @param \common\models\Workspace $workspace
-	 * @param int $increment
-	 * @return bool
-	 */
-	protected function updateWorkspaceSubscriptionFeatureQuota($workspace, $increment = 1)
-	{
-		$workspaceSubscriptionFeature = $workspace->getWorkspaceSubscriptionFeature(Feature::WORKING_POINTS);
-
-		// Prevent negative quota
-		if ($increment < 0 && $workspaceSubscriptionFeature->quota <= 0) {
-			return true;
-		}
-
-		$workspaceSubscriptionFeature->quota += $increment;
-		return $workspaceSubscriptionFeature->save(false, ['quota']);
 	}
 
 	/**
