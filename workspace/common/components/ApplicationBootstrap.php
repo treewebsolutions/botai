@@ -252,14 +252,18 @@ class ApplicationBootstrap extends Component implements BootstrapInterface
 		if (Yii::$app->has('mailer')) {
 			/** @var \yii\swiftmailer\Mailer $mailer */
 			$mailer = Yii::$app->get('mailer');
-			$settings = Yii::$app->settings->getCategory('email');
-			$masterSettings = Yii::$app->masterSettings->getCategory('email');
+			// A tenant that has never saved its e-mail settings has no 'email' category,
+			// and getCategory() raises "Undefined array key" on it - fatal in console,
+			// where the mailer is always defined, so every command died on bootstrap.
+			$settings = Yii::$app->settings->getAll()['email'] ?? [];
+			$masterSettings = Yii::$app->masterSettings->getAll()['email'] ?? [];
 
+			$from = !empty($settings['from']) ? $settings['from'] : ($masterSettings['from'] ?? null);
 			$mailer->messageConfig = array_merge($mailer->messageConfig, array_filter([
-				'from' => !empty($settings['from']) ? [$settings['from'] => Yii::$app->name] : [$masterSettings['from'] => Yii::$app->name],
+				'from' => $from ? [$from => Yii::$app->name] : null,
 				'replyTo' => !empty($settings['replyTo']) ? [$settings['replyTo'] => Yii::$app->name] : null,
 			]));
-			if ($settings['useCustomSMTP']) {
+			if (!empty($settings['useCustomSMTP'])) {
 				$mailer->setTransport([
 					'class' => 'Swift_SmtpTransport',
 					'host' => $settings['host'],
@@ -271,11 +275,11 @@ class ApplicationBootstrap extends Component implements BootstrapInterface
 			} else {
 				$mailer->setTransport([
 					'class' => 'Swift_SmtpTransport',
-					'host' => $masterSettings['host'],
-					'port' => $masterSettings['port'],
-					'encryption' => $masterSettings['encryption'],
-					'username' => $masterSettings['username'],
-					'password' => $masterSettings['password'],
+					'host' => $masterSettings['host'] ?? null,
+					'port' => $masterSettings['port'] ?? null,
+					'encryption' => $masterSettings['encryption'] ?? null,
+					'username' => $masterSettings['username'] ?? null,
+					'password' => $masterSettings['password'] ?? null,
 				]);
 			}
 
